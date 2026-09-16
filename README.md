@@ -51,18 +51,15 @@ One job per model, five per corpus. From the paper's appendix, a seed takes
 — so GenSPP is hours where a baseline is minutes, and splitting per model
 keeps a table off the slowest cell's critical path.
 
-### Two things to stage first
+### What `build.sbatch` stages
 
-**GloVe**, for HateXplain only. A 1.4 GB download the paper expects you to
-fetch, so nothing here fetches it:
+**GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
+than by five array jobs at the same time, and kept on scratch rather than in
+the image: an image is rebuilt whenever a dependency floor moves, and this
+file never changes. Stanford publishes no digest, so the check is on the shape
+of what came out — 25 dimensions plus the token is 26 fields on line one.
 
-```bash
-mkdir -p $SCRATCH/glove && cd $SCRATCH/glove
-wget https://nlp.stanford.edu/data/glove.twitter.27B.zip
-unzip -j glove.twitter.27B.zip glove.twitter.27B.25d.txt
-```
-
-`run.sbatch` refuses rather than starting without it, and so does the task:
+`run.sbatch` still refuses to start without it, and so does the task:
 `requires_embeddings` exists because the registered HateXplain task once ran
 without its vector file and reported numbers for a two-word vocabulary.
 
