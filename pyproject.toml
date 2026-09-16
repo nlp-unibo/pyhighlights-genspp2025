@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genspp2025"
+version = "0.1.0"
+description = "Reproduction of Ruggeri and Signorelli, ACL 2025, on pyhighlights"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+    # The reproduction is configuration; every component it names is the
+    # library's. 0.9.0 is a floor rather than a preference: it is the release
+    # that renamed `AnnotationAggregator(rationale=)` to `highlights=` and
+    # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls, so an
+    # older library fails at the call rather than quietly doing something else.
+    "pyhighlights>=0.9.0,<0.10",
+    # Named directly because `compare.py` reads a results tree with it. It
+    # arrives through pyhighlights as well; a floor of ours on something we
+    # import ourselves is not a floor to inherit.
+    "pandas>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-xdist>=3.0",
+    "ruff>=0.15.20",
+]
+
+[project.urls]
+Paper = "https://aclanthology.org/2025.acl-long.59/"
+"Reference implementation" = "https://github.com/nlp-unibo/gen-spp"
+Library = "https://github.com/nlp-unibo/pyhighlights"
+
+[tool.setuptools.packages.find]
+include = ["genspp2025*"]
+
+[tool.ruff]
+# The library's, so that configuration moved from it keeps passing what it
+# passed there.
+target-version = "py310"
+extend-exclude = ["*.md"]
+line-length = 88
+lint.select = ["E", "F", "I", "W"]

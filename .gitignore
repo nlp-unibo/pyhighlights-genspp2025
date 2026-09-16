@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+# A symlink into $HOME/virtualenvs, so no trailing slash: that pattern
+# matches a directory and this is a link.
+.venv
+.ruff_cache/
+.pytest_cache/
+
+# A run's output, and the reason this repository is small. `results/` is what
+# `compare.py` reads and what gets archived somewhere that is not git.
+results/
+logs/
+archive/
+
+# The container image, built on the cluster and never committed.
+*.sif
+
+# The 1.4 GB GloVe file the paper expects you to fetch yourself.
+glove*.txt
+glove*.zip
