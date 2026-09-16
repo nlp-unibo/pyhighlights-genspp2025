@@ -98,9 +98,28 @@ candidate of a search sees one batch order; and mutation is uniform at 0.05,
 which explores the selector's decision threshold at 71% of the release's rate
 rather than half of it.
 
-## A note on `GenSPPToyLoader`
+## The corpus, and the proxy
 
-It lives in the library, not here — it reads a published corpus with a DOI,
-like the library's other loaders, and the library's own `tools/build_datasets.py`
-builds that Zenodo record. Until pyhighlights relocates it, the import is
-`pyhighlights_benchmarks.genspp2025.corpora`.
+There is no loader here for the toy corpus. It is
+`pyhighlights.components.loaders.ToyLoader` with a `url`: one loader
+generates, saves and reads, so a published toy corpus is a URL and a digest in
+a configuration rather than a class somebody writes per dataset.
+
+The published record holds the corpus in the library's columns, converted when
+the artifact is built, so nothing converts it on the way in.
+
+`genspp2025/components/corpora.py` keeps a `ReleasedToyLoader` anyway, for
+anyone holding the **original** pickle — from the reference implementation, or
+a copy made before the record was converted. That file stores
+`structure_indexes`, the positions a highlight marks, where the library stores
+a vector; the proxy fills in that column and hands the rest to `ToyLoader`:
+
+```python
+from genspp2025.components.corpora import ReleasedToyLoader
+
+splits = ReleasedToyLoader(url="toy_dataset.pkl").load()
+```
+
+Nothing registers it. A test pins that it and a plain `ToyLoader` over the
+converted file return the same rows — otherwise converting the artifact
+changed the corpus rather than its serialisation.

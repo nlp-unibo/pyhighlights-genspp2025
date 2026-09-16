@@ -8,12 +8,13 @@ import pyhighlights
 import pytest
 import torch as th
 from cinnamon.registry import Registry
+from pyhighlights.components.loaders import ToyLoader
 from pyhighlights.components.models.spp.implementations import GRUBackbone
 from pyhighlights.components.preprocessors import Preprocessor
 from pyhighlights.utility.embeddings import one_hot_table
-from pyhighlights_benchmarks.genspp2025.corpora import GenSPPToyLoader
 
 import genspp2025
+from genspp2025.components.corpora import ReleasedToyLoader
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR_TASK,
     HATEXPLAIN_GENSPP,
@@ -49,7 +50,8 @@ def build_registry():
     )
 
 
-def toy_pickle(directory: Path, rows: int = 10) -> Path:
+def released_pickle(directory: Path, rows: int = 10) -> Path:
+    """The release's schema: marked positions, and no `tokens` column."""
     path = directory / "toy_dataset.pkl"
     pd.DataFrame(
         {
@@ -184,7 +186,7 @@ def test_the_toy_corpus_reaches_a_model_as_one_hot(tmp_path):
     orthonormal and the padding row is zero.
     """
     build_registry()
-    splits = GenSPPToyLoader(url=str(toy_pickle(tmp_path))).load()
+    splits = ReleasedToyLoader(url=str(released_pickle(tmp_path))).load()
 
     for key in (TOY_FR_TASK, TOY_GENSPP_TASK):
         task = Registry.from_key(key, save_path=str(tmp_path))
@@ -265,7 +267,7 @@ def test_a_dead_one_hot_column_changes_nothing_but_the_weight_count():
 
 
 def test_the_toy_corpus_is_read_as_characters(tmp_path):
-    loader = GenSPPToyLoader(url=str(toy_pickle(tmp_path)))
+    loader = ReleasedToyLoader(url=str(released_pickle(tmp_path)))
     splits = loader.load()
 
     assert list(splits) == ["train", "val", "test"]
@@ -280,56 +282,84 @@ def test_the_toy_corpus_is_read_as_characters(tmp_path):
     assert len(splits["train"]) + len(splits["val"]) == 8
 
     # The validation draw is seeded, so two loads agree.
-    again = GenSPPToyLoader(url=str(toy_pickle(tmp_path))).load()
+    again = ReleasedToyLoader(url=str(released_pickle(tmp_path))).load()
     assert splits["val"]["text"].tolist() == again["val"]["text"].tolist()
 
 
-def test_the_toy_corpus_reads_the_published_artifact(tmp_path):
-    # The Zenodo record holds the artifact, not a loose pickle, because the
-    # artifact is what carries the manifest, the licence and the citation. A
-    # local copy of it has to read the same as the published one.
+def test_the_proxy_reads_a_published_archive_of_the_old_schema(tmp_path):
+    """Anyone still holding the original artifact can read it.
+
+    The published record now carries the corpus already converted, so the
+    registered key does not go through this. It is kept for a copy of the
+    release -- from the reference implementation, or made before the record was
+    converted -- which would otherwise have nothing to read it with.
+    """
     archive = tmp_path / "pyhighlights-genspp-toy-v1.zip"
     with zipfile.ZipFile(archive, "w") as target:
-        target.write(toy_pickle(tmp_path), "toy_dataset.pkl")
+        target.write(released_pickle(tmp_path), "toy_dataset.pkl")
         target.writestr("README.md", "# artifact")
 
-    splits = GenSPPToyLoader(
-        url=str(archive), sha256=None, directory=tmp_path / "cache"
+    splits = ReleasedToyLoader(
+        url=str(archive),
+        sha256=None,
+        member="toy_dataset.pkl",
+        directory=tmp_path / "cache",
     ).load()
 
     assert list(splits) == ["train", "val", "test"]
     assert sum(len(frame) for frame in splits.values()) == 10
 
 
-def test_the_toy_corpus_defaults_to_the_published_artifact():
-    loader = GenSPPToyLoader()
+def test_the_registered_toy_key_names_the_published_artifact():
+    """The documented key has to build without a private override.
 
-    # The version record rather than the concept one: the digest pins these
-    # exact bytes, and a concept DOI resolves to whatever is newest.
-    assert loader.url.endswith("pyhighlights-genspp-toy-v1.zip/content")
+    Registered with `url=None` it did not, and worse than not building: a
+    `ToyLoader` without a `url` *generates*, so the reproduction would have
+    trained on a corpus of the right shape and the wrong content.
+    """
+    build_registry()
+    loader = Registry.from_key(TOY, expected_type=ToyLoader)
+
+    assert loader.url.endswith("pyhighlights-genspp-toy-v2.zip/content")
     assert "22711449" in loader.url
-    assert loader.sha256 == (
-        "5b0886163b215b932b242ce4910cd8d60b46fa79cfdfdde41e9646d99d9ebc92"
+    assert loader.member == "corpus.pkl"
+    # The released baselines' split scheme, which the artifact does not store.
+    assert (loader.train_ratio, loader.val_ratio, loader.split_seed) == (
+        0.8,
+        0.2,
+        15000,
     )
 
 
-def test_the_registered_toy_key_names_the_published_artifact():
-    """The documented reproduction key has to build without a private override.
+def test_the_converted_artifact_needs_no_proxy(tmp_path):
+    """What the record holds now: the library's columns, read by ToyLoader.
 
-    Registered with `url=None`, it did not: `Registry.from_key(TOY)` returned
-    a loader with nowhere to read the corpus from, and `load()` refused.
+    The proxy and a plain loader have to agree, or converting the artifact
+    changed the corpus rather than its serialisation.
     """
-    build_registry()
-    loader = Registry.from_key(TOY, expected_type=GenSPPToyLoader)
+    released = released_pickle(tmp_path)
+    converted = tmp_path / "corpus.pkl"
+    frame = pd.read_pickle(released)
+    pd.DataFrame(
+        {
+            "sample_id": range(len(frame)),
+            "text": frame["text"],
+            "tokens": frame["text"].map(list),
+            "label": frame["label"].astype(int),
+            "highlights": [
+                [1 if position in set(marked) else 0 for position in range(len(text))]
+                for marked, text in zip(frame["structure_indexes"], frame["text"])
+            ],
+        }
+    ).to_pickle(converted)
 
-    assert loader.url == GenSPPToyLoader.URL
-    assert loader.sha256 == GenSPPToyLoader.SHA256
+    through_proxy = ReleasedToyLoader(url=str(released)).load()
+    direct = ToyLoader(url=str(converted)).load()
 
-
-def test_the_toy_corpus_refuses_when_it_is_given_nowhere_to_look():
-    # A clear refusal beats silently synthesising a different corpus.
-    with pytest.raises(ValueError, match="no download URL"):
-        GenSPPToyLoader(url=None).load()
+    for name, part in through_proxy.items():
+        assert direct[name]["text"].tolist() == part["text"].tolist()
+        assert direct[name]["highlights"].tolist() == part["highlights"].tolist()
+        assert direct[name]["label"].tolist() == part["label"].tolist()
 
 
 def test_the_hatexplain_pipeline_folds_classes_before_it_counts_votes(tmp_path):

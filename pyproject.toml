@@ -11,11 +11,18 @@ license = { file = "LICENSE" }
 requires-python = ">=3.10"
 dependencies = [
     # The reproduction is configuration; every component it names is the
-    # library's. 0.9.0 is a floor rather than a preference: it is the release
-    # that renamed `AnnotationAggregator(rationale=)` to `highlights=` and
-    # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls, so an
-    # older library fails at the call rather than quietly doing something else.
-    "pyhighlights>=0.9.0,<0.10",
+    # library's. Each floor is a defect rather than a preference.
+    #
+    # 0.11.0: `ToyLoader` reads as well as generates, which is how the released
+    # corpus is loaded here at all -- 0.10.0 and earlier read it with a
+    # `GenSPPToyLoader` that no longer exists. Worse than absent on an older
+    # library: `ToyLoader(url=...)` there is an unknown argument, and a
+    # `ToyLoader` without a `url` *generates*, so the failure mode is training
+    # on a corpus of the right shape and the wrong content.
+    #
+    # 0.9.0 renamed `AnnotationAggregator(rationale=)` to `highlights=` and
+    # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls.
+    "pyhighlights>=0.11.0,<0.12",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
