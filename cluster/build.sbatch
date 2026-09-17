@@ -6,7 +6,9 @@
 #SBATCH --mem=16G
 #SBATCH --partition=sbuild
 #SBATCH --output=logs/build_%j.log
-#SBATCH --chdir=/scratch.hpc/federico.ruggeri6/pyhighlights-genspp2025
+
+# No --chdir: the job runs in the directory it was submitted from, so submit
+# from the repository root.
 
 # Containers are built on sbuild, never on a login node -- `apptainer` exists
 # only on the compute nodes, so nothing containerized runs from a login shell
@@ -18,7 +20,9 @@
 
 set -euo pipefail
 
-SCRATCH=/scratch.hpc/federico.ruggeri6
+# Override SCRATCH to point somewhere else; the default is this account's
+# scratch directory.
+SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
 mkdir -p "$SCRATCH/cache"
 
 apptainer build --force env.sif cluster/env.def

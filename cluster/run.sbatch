@@ -8,7 +8,9 @@
 #SBATCH --gres=gpu:1
 #SBATCH --time=24:00:00
 #SBATCH --output=logs/%x_%A_%a.log
-#SBATCH --chdir=/scratch.hpc/federico.ruggeri6/pyhighlights-genspp2025
+
+# No --chdir: the job runs in the directory it was submitted from, so submit
+# from the repository root.
 
 # One job per model, five per corpus. The argument picks the corpus:
 #
@@ -40,7 +42,9 @@ shift || true
 MODELS=(fr mgr mcd grat genspp)
 MODEL=${MODELS[${SLURM_ARRAY_TASK_ID:-0}]}
 
-SCRATCH=/scratch.hpc/federico.ruggeri6
+# Override SCRATCH to point somewhere else; the default is this account's
+# scratch directory.
+SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
 mkdir -p "$SCRATCH/cache" logs
 
 EXTRA=()

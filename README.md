@@ -37,6 +37,11 @@ uv run python run.py toy --smoke     # one seed, one batch, minutes
 
 ## On the cluster
 
+Submit from the repository root: neither job sets `--chdir`, so each runs in
+the directory it was submitted from. Both stage into `$SCRATCH`, which
+defaults to `/scratch.hpc/$USER` and can be set to any other path before
+submitting.
+
 ```bash
 mkdir -p logs
 sbatch cluster/build.sbatch                       # image, registry, toy corpus
