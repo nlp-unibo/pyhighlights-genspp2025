@@ -123,6 +123,16 @@ own Python, `--system-site-packages` so the image's torch and CUDA userspace
 stay visible. The jobs then run `$SCRATCH/venv/bin/python`. Same pins, and
 nothing needs root.
 
+The pull is cached on scratch but **assembled on the node's own disk**.
+Converting the layers to a SIF unpacks the whole image as ordinary files and
+squashes them back, which is tens of thousands of small writes: on
+`/scratch.hpc` that step managed 1.4 GB of a 7 GB image in two and a half
+hours, with the process at one percent of a core because it was waiting on the
+filesystem. A node whose local disk holds less than 20 GB falls back to
+scratch and says so in the log. The image is also pulled only when `env.sif` is
+absent, so a rebuild that moves a pip floor does not repeat the conversion;
+delete `env.sif` to fetch the tag again.
+
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
 than inside it: the image is pulled again whenever its tag moves, and this
