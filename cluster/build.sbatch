@@ -27,18 +27,31 @@ mkdir -p "$SCRATCH/cache"
 
 apptainer build --force env.sif cluster/env.def
 
-# Two checks the queue should not be the place to discover.
+# Two checks the queue should not be the place to discover, in one registry
+# build: the keys resolve, and the toy corpus is on disk.
 #
-# The registry: 42 keys, none invalid. An invalid key is an experiment missing
-# from the table rather than an error, so it has to be named here.
+# The registry: every key resolves and none is invalid. An invalid key is an
+# experiment missing from the table rather than an error, so it has to be
+# named here. The count is printed rather than pinned: a key added to the
+# reproduction is not a build failure.
+#
+# The toy corpus is fetched from Zenodo and digest-verified now, while there
+# is a person reading the log, rather than by five array jobs at once on a
+# node that may have no outbound network at all. It is read through the
+# registered `dataset` configuration, so the archive, the digest and the split
+# scheme are the ones a run uses rather than a second copy of them here.
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \
   --env XDG_CACHE_HOME="$SCRATCH/cache" \
   env.sif python - <<'PY'
 from pathlib import Path
+
 from cinnamon.registry import Registry
-import genspp2025, pyhighlights
+
+import genspp2025
+import pyhighlights
+from genspp2025.configurations.toy.keys import TOY
 
 valid, invalid = Registry.build(
     directory=Path(genspp2025.__file__).parent,
@@ -47,20 +60,10 @@ valid, invalid = Registry.build(
 paper = [key for key in valid if key.namespace == "genspp2025"]
 print(f"pyhighlights {pyhighlights.__version__}, {len(paper)} keys registered")
 assert not invalid, sorted(str(key) for key in invalid)
-PY
 
-# The toy corpus: fetched from Zenodo and digest-verified now, while there is
-# a person reading the log, rather than by five array jobs at once on a node
-# that may have no outbound network at all.
-apptainer exec \
-  --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
-  --env PYTHONPATH="$PWD" \
-  --env XDG_CACHE_HOME="$SCRATCH/cache" \
-  env.sif python -c "
-from pyhighlights_benchmarks.genspp2025.corpora import GenSPPToyLoader
-splits = GenSPPToyLoader().load()
+splits = Registry.from_key(TOY).load()
 print({name: len(frame) for name, frame in splits.items()})
-"
+PY
 
 # GloVe, for HateXplain. 1.4 GB, so it is fetched once here rather than by
 # five array jobs at the same time, and kept on scratch rather than in the
