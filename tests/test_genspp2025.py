@@ -30,6 +30,7 @@ from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )
+from genspp2025.configurations.toy.datasets import ARCHIVE, RECORD, SHA256
 from genspp2025.configurations.toy.keys import (
     TOY,
     TOY_BENCHMARK,
@@ -320,9 +321,13 @@ def test_the_registered_toy_key_names_the_published_artifact():
     build_registry()
     loader = Registry.from_key(TOY, expected_type=ToyLoader)
 
-    assert loader.url.endswith("pyhighlights-genspp-toy-v2.zip/content")
-    assert "22711449" in loader.url
+    assert loader.url.endswith(f"{ARCHIVE}/content")
+    assert RECORD in loader.url
     assert loader.member == "corpus.pkl"
+    # The digest of what the build produces, pinned before the deposit rather
+    # than after it: two builds of the same released pickle are byte for byte
+    # the same, so publishing cannot change this number -- only `RECORD` moves.
+    assert loader.sha256 == SHA256
     # The released baselines' split scheme, which the artifact does not store.
     assert (loader.train_ratio, loader.val_ratio, loader.split_seed) == (
         0.8,
