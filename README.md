@@ -133,6 +133,12 @@ scratch and says so in the log. The image is also pulled only when `env.sif` is
 absent, so a rebuild that moves a pip floor does not repeat the conversion;
 delete `env.sif` to fetch the tag again.
 
+The pull runs with `--disable-cache` for the same reason. A cached pull writes
+the finished image twice, once into `$APPTAINER_CACHEDIR/cache/oci-tmp` and
+once to the destination, and scratch here measures 11.6 MB/s sequential, so
+the second copy is ten minutes nobody reads back: the tag is pinned and the
+guard above skips the pull entirely once the image exists.
+
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
 than inside it: the image is pulled again whenever its tag moves, and this

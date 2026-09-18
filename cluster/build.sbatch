@@ -81,13 +81,21 @@ mkdir -p "$APPTAINER_TMPDIR"
 # language model and no dependency imposes a torch floor of its own. The base
 # is the stock runtime image, the smallest one that runs the library.
 IMAGE=docker://pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
-# Pulled once. The conversion is the expensive half of this job and the tag is
-# pinned, so a rebuild that exists to move a pip floor has no reason to repeat
-# it. Delete `env.sif` to fetch the tag again.
+# Pulled once, and without the cache. The conversion is the expensive half of
+# this job and the tag is pinned, so a rebuild that exists to move a pip floor
+# has no reason to repeat it. Delete `env.sif` to fetch the tag again.
+#
+# `--disable-cache` because a cached pull writes the finished image twice: once
+# into `$APPTAINER_CACHEDIR/cache/oci-tmp` and once to the destination. Both
+# copies land on scratch, and the second one was measured here at 0.8 MB/s,
+# which is two and a half hours for a seven gigabyte image before the real
+# destination is even written. Nothing reuses that cached SIF: the tag is
+# pinned, the guard above skips the pull once `env.sif` exists, and the layer
+# blobs it would also hold are worth less than the hours.
 if [ -f env.sif ]; then
   echo "image already built at $PWD/env.sif"
 else
-  apptainer pull env.sif "$IMAGE"
+  apptainer pull --disable-cache env.sif "$IMAGE"
 fi
 
 # The pinned packages, in a virtualenv on scratch rather than in the image.
