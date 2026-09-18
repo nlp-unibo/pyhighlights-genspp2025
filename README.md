@@ -20,12 +20,13 @@ published, and what it takes to run them on a cluster.
 | `published.py` | Tables 1 and 2, transcribed. Nothing computed |
 | `compare.py` | a results tree beside those numbers, and what it cost to produce |
 | `run.py` | run one cell, or a corpus's five |
-| `cluster/` | the Apptainer image and the Slurm jobs |
+| `cluster/` | the Slurm jobs, and the image and virtualenv they stage |
 
 Nothing registers on import. A run builds the registry over this package with
-the library beside it, which is why the container installs `pyhighlights` and
-mounts this repository rather than installing it: an edit runs without a
-rebuild, and the container never holds a second copy of every registration.
+the library beside it, which is why `pyhighlights` is installed on the cluster
+and this repository is mounted rather than installed: an edit runs without
+staging anything again, and the environment never holds a second copy of every
+registration.
 
 ## Locally
 
@@ -50,7 +51,7 @@ submitting.
 
 ```bash
 mkdir -p logs
-sbatch cluster/build.sbatch                       # image, registry, toy corpus
+sbatch cluster/build.sbatch                       # image, packages, registry, corpus
 sbatch --array=0 cluster/run.sbatch toy --smoke   # says every cell builds
 sbatch cluster/run.sbatch toy                     # the five Toy cells
 sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
@@ -105,9 +106,26 @@ search, measured on a 24-core machine — 14.1 s on one worker, 10.0 s on eight,
 
 ### What `build.sbatch` stages
 
+**The image and the packages.** The image is *pulled*, not built from a
+definition file. A definition file's `%post` runs under fakeroot, and
+apptainer injects the host's `libfakeroot.so` to do it, so a host newer than
+the base image fails before pip is reached:
+
+```
+/bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+(required by /.singularity.d/libs/libfakeroot.so)
+```
+
+Every `pytorch/pytorch` runtime tag is Ubuntu 22.04 with glibc 2.35, so no tag
+of that base answers a host needing 2.38. A pull runs no `%post` at all, and
+the pinned packages go into `$SCRATCH/venv` instead — built with the image's
+own Python, `--system-site-packages` so the image's torch and CUDA userspace
+stay visible. The jobs then run `$SCRATCH/venv/bin/python`. Same pins, and
+nothing needs root.
+
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
-than by five array jobs at the same time, and kept on scratch rather than in
-the image: an image is rebuilt whenever a dependency floor moves, and this
+than by five array jobs at the same time, and kept beside the image rather
+than inside it: the image is pulled again whenever its tag moves, and this
 file never changes. Stanford publishes no digest, so the check is on the shape
 of what came out — 25 dimensions plus the token is 26 fields on line one.
 
@@ -116,7 +134,7 @@ of what came out — 25 dimensions plus the token is 26 fields on line one.
 without its vector file and reported numbers for a two-word vocabulary.
 
 **The toy corpus** is fetched from Zenodo
-([10.5281/zenodo.22711449](https://doi.org/10.5281/zenodo.22711449), CC-BY-4.0,
+([10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019), CC-BY-4.0,
 released by both authors) and digest-verified. `build.sbatch` does it once
 while a person is reading the log, rather than five array jobs at once on a
 node that may have no outbound network.
