@@ -25,6 +25,20 @@ set -euo pipefail
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
 mkdir -p "$SCRATCH/cache"
 
+# Apptainer caches the layers it pulls under `$HOME/.apptainer` and assembles
+# the image in `/tmp`, and a home directory under quota fails the build after
+# the download rather than before it:
+#
+#   FATAL: While performing build: conveyor failed to get: write
+#   /home/<user>/.apptainer/cache/blob/oci-layout: disk quota exceeded
+#
+# Both go to scratch, which is where this account has room. The cache is kept
+# rather than cleared: a rebuild that changes only a pip floor reuses the base
+# image's layers instead of fetching two gigabytes again.
+export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
+export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp"
+mkdir -p "$APPTAINER_CACHEDIR" "$APPTAINER_TMPDIR"
+
 apptainer build --force env.sif cluster/env.def
 
 # Two checks the queue should not be the place to discover, in one registry
