@@ -6,10 +6,10 @@ Usage::
     python compare.py --results results            # both corpora
 
 Two tables per corpus. **Table 1** is the paper's, measured beside published.
-**Cost** is what those numbers took to produce -- runtime, inference, memory,
-parameters -- which the paper does not report and which is the other axis a
-reader compares a rationalizer on. It has no published half; it is filled by
-running the experiments.
+**Cost** is what those numbers took to produce -- runtime, inference, memory
+in mebibytes, parameters trainable and frozen -- which the paper does not
+report and which is the other axis a reader compares a rationalizer on. It has
+no published half; it is filled by running the experiments.
 
 The library already turns a results tree into a table --
 :class:`pyhighlights.components.analyzers.MetricsAnalyzer` does the walking,
@@ -58,8 +58,10 @@ COSTS = {
     "runtime/seed": ("runtime_s", "seconds"),
     "inference/batch": ("inference_batch_s", "milliseconds"),
     "inference/pass": ("inference_epoch_s", "seconds"),
-    "memory/model": ("memory_per_run_mb", "megabytes"),
-    "parameters": ("parameters", "millions"),
+    "memory/model": ("memory_per_run_mib", "mebibytes"),
+    "parameters": ("parameters", "parameters"),
+    "trainable": ("trainable_parameters", "parameters"),
+    "frozen": ("frozen_parameters", "parameters"),
     "models trained": ("models", "count"),
     "at once": ("concurrency", "count"),
 }
@@ -76,7 +78,7 @@ def shown(value: tuple[float, float] | str, unit: str) -> str:
     mean, deviation = value
     if unit == "count":
         return f"{mean:,.0f}" if not deviation else f"{mean:,.0f} +/- {deviation:,.0f}"
-    if unit == "millions":
+    if unit == "parameters":
         # A toy backbone is thousands and a transformer is hundreds of
         # millions, and neither reads in the other's unit.
         if mean >= 1e6:
@@ -84,7 +86,7 @@ def shown(value: tuple[float, float] | str, unit: str) -> str:
         return f"{mean / 1e3:.1f}k" if mean >= 1e3 else f"{mean:,.0f}"
     if unit == "milliseconds":
         return f"{mean * 1e3:.1f} +/- {deviation * 1e3:.1f}"
-    if unit == "megabytes":
+    if unit == "mebibytes":
         return f"{mean:,.0f} +/- {deviation:,.0f}"
     # Seconds, until an hour makes them unreadable.
     if mean >= 3600:

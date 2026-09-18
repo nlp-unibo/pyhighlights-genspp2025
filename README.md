@@ -71,9 +71,9 @@ experiments.
 
 ```
 === toy — cost ===
- model  runtime/model   runtime/seed inference/batch inference/pass memory/model parameters models trained at once
-    fr 0.47s +/- 0.00 0.47s +/- 0.00     4.1 +/- 0.0 0.17s +/- 0.00    889 +/- 0       2.3k              1       1
-genspp 2.44s +/- 0.00 2.44s +/- 0.00     2.5 +/- 0.0 0.12s +/- 0.00    224 +/- 0       2.9k              4       4
+ model  runtime/model   runtime/seed inference/batch inference/pass memory/model parameters trainable frozen models trained at once
+    fr 0.36s +/- 0.00 0.36s +/- 0.00     4.1 +/- 0.0 0.18s +/- 0.00    888 +/- 0       2.3k      1.7k    600              1       1
+genspp 2.42s +/- 0.00 2.42s +/- 0.00     2.6 +/- 0.0 0.13s +/- 0.00    224 +/- 0       2.9k      1.7k   1.2k              4       4
 ```
 
 **`runtime/model` is the column to compare rows on.** A baseline trains one
@@ -81,9 +81,11 @@ model per seed; GenSPP trains its founders plus every generation's children,
 several at a time, and reports the winner — so `runtime/seed` would say a
 search is as cheap as the machine that ran it. The per-model figure is
 `runtime × at-once / models-trained`, which for a baseline is its own wall
-clock. `inference/batch` is in milliseconds, `memory/model` in megabytes, and
-a cell reads `-` where a model has not been run or the tree predates the
-library reporting costs.
+clock. `inference/batch` is in milliseconds, `memory/model` in mebibytes, and
+the parameter counts are of the model as it was scored — the toy backbone's
+one-hot table is frozen by construction, which is why `frozen` is not zero. A
+cell reads `-` where a model has not been run or the tree predates the library
+reporting costs.
 
 A search scores eight candidates at once, one per worker, which is the
 released implementation's pool and the job's `--cpus-per-task=8`. It is worth

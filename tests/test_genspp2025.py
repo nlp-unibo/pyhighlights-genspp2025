@@ -434,9 +434,11 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
         "cost_runtime_per_run_s": 11.4,
         "cost_inference_batch_s": 0.0042,
         "cost_inference_epoch_s": 1.5,
-        "cost_memory_mb": 8000.0,
-        "cost_memory_per_run_mb": 1000.0,
+        "cost_memory_mib": 8000.0,
+        "cost_memory_per_run_mib": 1000.0,
         "cost_parameters": 2_574_148.0,
+        "cost_trainable_parameters": 2_500_000.0,
+        "cost_frozen_parameters": 74_148.0,
         "cost_models": 5050.0,
         "cost_concurrency": 8.0,
     }
@@ -463,6 +465,8 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
     assert table.loc["genspp", "runtime/model"].startswith("11.40s")
     assert table.loc["genspp", "inference/batch"].startswith("4.2")
     assert table.loc["genspp", "parameters"] == "2.57M"
+    assert table.loc["genspp", "trainable"] == "2.50M"
+    assert table.loc["genspp", "frozen"] == "74.1k"
     assert table.loc["genspp", "models trained"] == "5,050"
     assert table.loc["genspp", "at once"] == "8"
     # And a cell nobody has measured.
