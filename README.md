@@ -71,9 +71,10 @@ experiments.
 
 ```
 === toy — cost ===
- model  runtime/model   runtime/seed inference/batch inference/pass memory/model parameters trainable frozen models trained at once
-    fr 0.36s +/- 0.00 0.36s +/- 0.00     4.1 +/- 0.0 0.18s +/- 0.00    888 +/- 0       2.3k      1.7k    600              1       1
-genspp 2.42s +/- 0.00 2.42s +/- 0.00     2.6 +/- 0.0 0.13s +/- 0.00    224 +/- 0       2.9k      1.7k   1.2k              4       4
+ model  runtime/model   runtime/seed inference/batch inference/pass memory/peak parameters trainable frozen models trained at once
+    fr 0.45s +/- 0.00 0.45s +/- 0.00     4.1 +/- 0.0 0.17s +/- 0.00   888 +/- 0       2.3k      1.7k    600              1       1
+   mcd 0.57s +/- 0.00 0.57s +/- 0.00     5.9 +/- 0.0 0.23s +/- 0.00   891 +/- 0       4.6k      3.4k   1.2k              1       1
+genspp 2.27s +/- 0.00 2.27s +/- 0.00     2.6 +/- 0.0 0.13s +/- 0.00   898 +/- 0       2.9k       859   2.0k              4       4
 ```
 
 **`runtime/model` is the column to compare rows on.** A baseline trains one
@@ -81,11 +82,19 @@ model per seed; GenSPP trains its founders plus every generation's children,
 several at a time, and reports the winner — so `runtime/seed` would say a
 search is as cheap as the machine that ran it. The per-model figure is
 `runtime × at-once / models-trained`, which for a baseline is its own wall
-clock. `inference/batch` is in milliseconds, `memory/model` in mebibytes, and
-the parameter counts are of the model as it was scored — the toy backbone's
-one-hot table is frozen by construction, which is why `frozen` is not zero. A
-cell reads `-` where a model has not been run or the tree predates the library
-reporting costs.
+clock. `inference/batch` is in milliseconds.
+
+**`memory/peak` is a ceiling, not a share.** It is the process high-water mark
+for the whole seed, and a search scores its candidates on threads of one
+process, so there is no per-model memory to divide out: most of the peak is
+resident before the first candidate exists. Read it as what a machine has to
+have, not as what a model uses.
+
+The parameter counts are of the model as it was scored. The toy backbone's
+one-hot table is frozen by construction, which is why `frozen` is never zero,
+and GenSPP's generator is frozen too — the search settled it and descent never
+moved it, so `trainable` is the predictor alone. A cell reads `-` where a model
+has not been run or the tree predates the library reporting costs.
 
 A search scores eight candidates at once, one per worker, which is the
 released implementation's pool and the job's `--cpus-per-task=8`. It is worth

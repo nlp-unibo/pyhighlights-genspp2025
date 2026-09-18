@@ -31,6 +31,7 @@ failed".
 """
 
 import argparse
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -58,7 +59,7 @@ COSTS = {
     "runtime/seed": ("runtime_s", "seconds"),
     "inference/batch": ("inference_batch_s", "milliseconds"),
     "inference/pass": ("inference_epoch_s", "seconds"),
-    "memory/model": ("memory_per_run_mib", "mebibytes"),
+    "memory/peak": ("memory_mib", "mebibytes"),
     "parameters": ("parameters", "parameters"),
     "trainable": ("trainable_parameters", "parameters"),
     "frozen": ("frozen_parameters", "parameters"),
@@ -80,10 +81,17 @@ def shown(value: tuple[float, float] | str, unit: str) -> str:
         return f"{mean:,.0f}" if not deviation else f"{mean:,.0f} +/- {deviation:,.0f}"
     if unit == "parameters":
         # A toy backbone is thousands and a transformer is hundreds of
-        # millions, and neither reads in the other's unit.
-        if mean >= 1e6:
-            return f"{mean / 1e6:.2f}M"
-        return f"{mean / 1e3:.1f}k" if mean >= 1e3 else f"{mean:,.0f}"
+        # millions, and neither reads in the other's unit. The threshold is
+        # on what will be printed rather than on the mean, so 999,990 reads
+        # as `1.00M` rather than as `1000.0k`.
+        def sized(value: float) -> str:
+            if round(value / 1e3, 1) >= 1000:
+                return f"{value / 1e6:.2f}M"
+            return f"{value / 1e3:.1f}k" if value >= 1e3 else f"{value:,.0f}"
+
+        # A search settles on whatever candidate won, so a parameter count is
+        # a spread across seeds like every other column here.
+        return sized(mean) if not deviation else f"{sized(mean)} +/- {sized(deviation)}"
     if unit == "milliseconds":
         return f"{mean * 1e3:.1f} +/- {deviation * 1e3:.1f}"
     if unit == "mebibytes":
@@ -102,13 +110,8 @@ def costs(directory: Path, corpus: str) -> pd.DataFrame:
     A results tree written before the library reported costs has no ``cost_``
     columns at all, and says so rather than printing zeros.
     """
-    frame = MetricsAnalyzer(
-        directory=directory,
-        metrics=[name for name, _ in COSTS.values()],
-        split="cost",
-        pairs=True,
-    ).analyze()
-    frame = frame[frame["task"].str.startswith(f"{corpus}-")].set_index("task")
+    frame = rows_of(directory, corpus, "cost", [name for name, _ in COSTS.values()])
+    frame = frame.set_index("task") if "task" in frame.columns else frame
     rows = []
     for model in MODELS:
         task = f"{corpus}-{model}"
@@ -120,19 +123,40 @@ def costs(directory: Path, corpus: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def measured(directory: Path, corpus: str) -> pd.DataFrame:
-    """Every run under ``directory`` whose task name starts with ``corpus``."""
-    frame = MetricsAnalyzer(
-        directory=directory,
-        metrics=[name for name, _ in MEASURED.values()],
-        split="test",
-        pairs=True,
+@lru_cache(maxsize=None)
+def analyzed(directory: Path, split: str, metrics: tuple[str, ...]) -> pd.DataFrame:
+    """One walk of the results tree per split, however many tables read it.
+
+    `MetricsAnalyzer` re-reads every ``results.json`` under the tree on each
+    call and filters by corpus afterwards, so a two-corpus run walked it four
+    times over.
+    """
+    return MetricsAnalyzer(
+        directory=directory, metrics=list(metrics), split=split, pairs=True
     ).analyze()
+
+
+def rows_of(directory: Path, corpus: str, split: str, metrics) -> pd.DataFrame:
+    """The runs of one corpus, or an empty frame where there are none.
+
+    A results tree with no ``results.json`` in it -- a directory made by hand,
+    a batch of jobs that all failed -- analyzes to a frame with no columns at
+    all, which has no ``task`` to filter on.
+    """
+    frame = analyzed(directory, split, tuple(metrics))
+    if "task" not in frame.columns:
+        return frame
     return frame[frame["task"].str.startswith(f"{corpus}-")]
 
 
+def measured(directory: Path, corpus: str) -> pd.DataFrame:
+    """Every run under ``directory`` whose task name starts with ``corpus``."""
+    return rows_of(directory, corpus, "test", [name for name, _ in MEASURED.values()])
+
+
 def compare(directory: Path, corpus: str) -> pd.DataFrame:
-    frame = measured(directory, corpus).set_index("task")
+    frame = measured(directory, corpus)
+    frame = frame.set_index("task") if "task" in frame.columns else frame
     rows = []
     for model in MODELS:
         published = TABLE_1[corpus][model]
