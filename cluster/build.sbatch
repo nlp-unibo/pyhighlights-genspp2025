@@ -47,19 +47,48 @@ mkdir -p "$SCRATCH/cache"
 #   FATAL: While performing build: conveyor failed to get: write
 #   /home/<user>/.apptainer/cache/blob/oci-layout: disk quota exceeded
 #
-# Both go to scratch, which is where this account has room. The cache is kept
+# The cache goes to scratch, which is where this account has room, and is kept
 # rather than cleared: a rebuild that changes only a pip floor reuses the base
 # image's layers instead of fetching two gigabytes again.
 export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
-export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp"
-mkdir -p "$APPTAINER_CACHEDIR" "$APPTAINER_TMPDIR"
+mkdir -p "$APPTAINER_CACHEDIR"
+
+# The assembly directory is a different question, and scratch is the wrong
+# answer for it. Converting the layers to a SIF unpacks the whole image as
+# ordinary files and then squashes them back, which is tens of thousands of
+# small writes: on a parallel filesystem that step ran at 1.4 GB in two and a
+# half hours for a seven gigabyte image, with the process at one percent of a
+# core because it was waiting on the filesystem rather than working. The same
+# mount reports `nodev`, which apptainer warns about because the device nodes
+# it unpacks cannot be created there at all.
+#
+# So the assembly happens on the node's own disk, and scratch is the fallback
+# for a node whose local disk is too small to hold the unpacked image beside
+# the SIF. Slow is better than a build that runs out of room.
+LOCAL_TMP="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
+mkdir -p "$LOCAL_TMP"
+AVAILABLE=$(df -Pk "$LOCAL_TMP" | awk 'NR==2 { print int($4 / 1048576) }')
+if [ "${AVAILABLE:-0}" -ge 20 ]; then
+  export APPTAINER_TMPDIR="$LOCAL_TMP"
+else
+  echo "local disk has ${AVAILABLE:-0}G, assembling on scratch instead (slow)" >&2
+  export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp"
+fi
+mkdir -p "$APPTAINER_TMPDIR"
 
 # This reproduction has no transformer in it. Both corpora encode with a GRU,
 # hidden 8 on Toy and hidden 16 on HateXplain, so nothing loads a pretrained
 # language model and no dependency imposes a torch floor of its own. The base
 # is the stock runtime image, the smallest one that runs the library.
 IMAGE=docker://pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
-apptainer pull --force env.sif "$IMAGE"
+# Pulled once. The conversion is the expensive half of this job and the tag is
+# pinned, so a rebuild that exists to move a pip floor has no reason to repeat
+# it. Delete `env.sif` to fetch the tag again.
+if [ -f env.sif ]; then
+  echo "image already built at $PWD/env.sif"
+else
+  apptainer pull env.sif "$IMAGE"
+fi
 
 # The pinned packages, in a virtualenv on scratch rather than in the image.
 #
