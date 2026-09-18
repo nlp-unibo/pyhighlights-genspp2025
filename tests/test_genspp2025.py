@@ -416,3 +416,84 @@ def test_the_search_scores_candidates_across_the_workers_the_job_allocates():
     for key in (TOY_GENSPP_TRAINER, HATEXPLAIN_GENSPP_TRAINER):
         search = Registry.from_key(key, expected_type=GenSPPTrainer)
         assert [str(device) for device in search.devices] == ["cpu"] * 8
+
+
+def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path):
+    """The other half of a comparison: what the numbers took to produce.
+
+    Nothing is published to set these beside, so the table is measured alone
+    -- and a model that has not been run, or a tree written before the library
+    reported costs, has to say so rather than print a zero.
+    """
+    import json
+
+    import compare
+
+    run = {
+        "cost_runtime_s": 7200.0,
+        "cost_runtime_per_run_s": 11.4,
+        "cost_inference_batch_s": 0.0042,
+        "cost_inference_epoch_s": 1.5,
+        "cost_memory_mib": 8000.0,
+        "cost_parameters": 2_574_148.0,
+        "cost_trainable_parameters": 2_500_000.0,
+        "cost_frozen_parameters": 74_148.0,
+        "cost_models": 5050.0,
+        "cost_concurrency": 8.0,
+    }
+    directory = tmp_path / "toy-genspp" / "2026-01-01T00-00-00"
+    directory.mkdir(parents=True)
+    (directory / "results.json").write_text(
+        json.dumps(
+            {
+                "name": "toy-genspp",
+                "seeds": [2023],
+                "runs": [run],
+                "summary": {
+                    name: {"mean": value, "std": 0.0, "values": [value]}
+                    for name, value in run.items()
+                },
+            }
+        )
+    )
+
+    table = compare.costs(tmp_path, "toy").set_index("model")
+
+    # Each in the unit it reads best in, and both counts as counts.
+    assert table.loc["genspp", "runtime/seed"].startswith("2.00h")
+    assert table.loc["genspp", "runtime/model"].startswith("11.40s")
+    assert table.loc["genspp", "inference/batch"].startswith("4.2")
+    assert table.loc["genspp", "memory/peak"] == "8,000 +/- 0"
+    assert table.loc["genspp", "parameters"] == "2.57M"
+    assert table.loc["genspp", "trainable"] == "2.50M"
+    assert table.loc["genspp", "frozen"] == "74.1k"
+    assert table.loc["genspp", "models trained"] == "5,050"
+    assert table.loc["genspp", "at once"] == "8"
+    # And a cell nobody has measured.
+    assert set(table.loc["fr"]) == {"-"}
+
+
+def test_a_results_tree_with_nothing_in_it_is_an_empty_table(tmp_path):
+    """A directory made by hand, or a batch of jobs that all failed.
+
+    `MetricsAnalyzer` answers that with a frame carrying no columns at all,
+    which has no `task` to filter on.
+    """
+    import compare
+
+    table = compare.costs(tmp_path, "toy")
+
+    assert list(table["model"]) == list(compare.MODELS)
+    assert set(table["runtime/seed"]) == {"-"}
+
+
+def test_a_parameter_count_keeps_the_spread_the_seeds_had():
+    """A search settles on whatever candidate won, so the count varies.
+
+    And the unit is chosen on what will be printed: 999,990 parameters is
+    `1.00M`, not `1000.0k`.
+    """
+    import compare
+
+    assert compare.shown((2_574_148.0, 12_000.0), "parameters") == "2.57M +/- 12.0k"
+    assert compare.shown((999_990.0, 0.0), "parameters") == "1.00M"
