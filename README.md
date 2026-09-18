@@ -110,12 +110,24 @@ There is no loader here for the toy corpus. It is
 generates, saves and reads, so a published toy corpus is a URL and a digest in
 a configuration rather than a class somebody writes per dataset.
 
-The published record holds the corpus in the library's columns, converted when
-the artifact is built, so nothing converts it on the way in.
+The artifact this configuration names holds the corpus in the library's own
+columns, converted when the artifact is built, so nothing converts it on the
+way in.
 
-`genspp2025/components/corpora.py` keeps a `ReleasedToyLoader` anyway, for
-anyone holding the **original** pickle — from the reference implementation, or
-a copy made before the record was converted. That file stores
+**It is not deposited yet.** Zenodo record
+[10.5281/zenodo.22711449](https://doi.org/10.5281/zenodo.22711449) holds
+`pyhighlights-genspp-toy-v1.zip`, the release's own pickle. The converted
+`pyhighlights-genspp-toy-v2.zip` is built by
+`pyhighlights/tools/build_datasets.py --skip-r2a` and its digest is already
+pinned in `genspp2025/configurations/toy/datasets.py`, but publishing it means
+a new version of the record, which gets a new id — `RECORD` there is what to
+update once it exists. Until then a toy run fetches a 404, and the corpus is
+read with the proxy below instead.
+
+`genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for the
+**original** pickle — what the published record still carries, what the
+reference implementation ships, and what a copy made before the conversion
+is. That file stores
 `structure_indexes`, the positions a highlight marks, where the library stores
 a vector; the proxy fills in that column and hands the rest to `ToyLoader`:
 
