@@ -13,6 +13,10 @@ dependencies = [
     # The reproduction is configuration; every component it names is the
     # library's. Each floor is a defect rather than a preference.
     #
+    # 0.12.0: a run reports what it cost under `cost_`, which is the table
+    # `compare.py` prints beside Table 1; an older library writes no such
+    # column and that table reads as empty.
+    #
     # 0.11.0: `ToyLoader` reads as well as generates, which is how the released
     # corpus is loaded here at all -- 0.10.0 and earlier read it with a
     # `GenSPPToyLoader` that no longer exists. Worse than absent on an older
@@ -22,7 +26,7 @@ dependencies = [
     #
     # 0.9.0 renamed `AnnotationAggregator(rationale=)` to `highlights=` and
     # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls.
-    "pyhighlights>=0.11.0,<0.12",
+    "pyhighlights>=0.12.0,<0.13",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
