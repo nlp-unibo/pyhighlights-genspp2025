@@ -5,6 +5,12 @@ Usage::
     python compare.py --results results --corpus toy
     python compare.py --results results            # both corpora
 
+Two tables per corpus. **Table 1** is the paper's, measured beside published.
+**Cost** is what those numbers took to produce -- runtime, inference, memory,
+parameters -- which the paper does not report and which is the other axis a
+reader compares a rationalizer on. It has no published half; it is filled by
+running the experiments.
+
 The library already turns a results tree into a table --
 :class:`pyhighlights.components.analyzers.MetricsAnalyzer` does the walking,
 the per-seed aggregation and the ``mean ± std``. All this adds is the other
@@ -42,6 +48,74 @@ MEASURED = {
 }
 
 MODELS = ("fr", "mgr", "mcd", "grat", "genspp")
+
+#: The cost table: the library's column name, and how to print it. Runtimes
+#: are per model trained rather than per seed, which is what makes a search
+#: comparable to a model trained once -- see `cost_runtime_per_run_s` in the
+#: library. Nothing is published to set these beside.
+COSTS = {
+    "runtime/model": ("runtime_per_run_s", "seconds"),
+    "runtime/seed": ("runtime_s", "seconds"),
+    "inference/batch": ("inference_batch_s", "milliseconds"),
+    "inference/pass": ("inference_epoch_s", "seconds"),
+    "memory/model": ("memory_per_run_mb", "megabytes"),
+    "parameters": ("parameters", "millions"),
+    "models trained": ("models", "count"),
+    "at once": ("concurrency", "count"),
+}
+
+
+def shown(value: tuple[float, float] | str, unit: str) -> str:
+    """One cell of the cost table, in the unit that reads best.
+
+    A seed of GenSPP is hours and a batch of inference is milliseconds, so a
+    single format would print either as zero or as a wall of digits.
+    """
+    if not isinstance(value, tuple):
+        return "-"
+    mean, deviation = value
+    if unit == "count":
+        return f"{mean:,.0f}" if not deviation else f"{mean:,.0f} +/- {deviation:,.0f}"
+    if unit == "millions":
+        # A toy backbone is thousands and a transformer is hundreds of
+        # millions, and neither reads in the other's unit.
+        if mean >= 1e6:
+            return f"{mean / 1e6:.2f}M"
+        return f"{mean / 1e3:.1f}k" if mean >= 1e3 else f"{mean:,.0f}"
+    if unit == "milliseconds":
+        return f"{mean * 1e3:.1f} +/- {deviation * 1e3:.1f}"
+    if unit == "megabytes":
+        return f"{mean:,.0f} +/- {deviation:,.0f}"
+    # Seconds, until an hour makes them unreadable.
+    if mean >= 3600:
+        return f"{mean / 3600:.2f}h +/- {deviation / 3600:.2f}"
+    if mean >= 60:
+        return f"{mean / 60:.1f}m +/- {deviation / 60:.1f}"
+    return f"{mean:.2f}s +/- {deviation:.2f}"
+
+
+def costs(directory: Path, corpus: str) -> pd.DataFrame:
+    """One row per model, one column per cost, ``-`` where a run has none.
+
+    A results tree written before the library reported costs has no ``cost_``
+    columns at all, and says so rather than printing zeros.
+    """
+    frame = MetricsAnalyzer(
+        directory=directory,
+        metrics=[name for name, _ in COSTS.values()],
+        split="cost",
+        pairs=True,
+    ).analyze()
+    frame = frame[frame["task"].str.startswith(f"{corpus}-")].set_index("task")
+    rows = []
+    for model in MODELS:
+        task = f"{corpus}-{model}"
+        found = frame.loc[task] if task in frame.index else None
+        row = {"model": model}
+        for label, (name, unit) in COSTS.items():
+            row[label] = "-" if found is None else shown(found[name], unit)
+        rows.append(row)
+    return pd.DataFrame(rows)
 
 
 def measured(directory: Path, corpus: str) -> pd.DataFrame:
@@ -95,11 +169,14 @@ def main() -> None:
         print(f"\n=== {corpus} — Table 1 ===")
         for column in COLUMNS:
             print(f"\n{column}")
-            shown = frame[
+            table = frame[
                 ["model", f"{column}_measured", f"{column}_published", f"{column}_d"]
             ]
-            shown.columns = ["model", "measured", "published", "d"]
-            print(shown.to_string(index=False))
+            table.columns = ["model", "measured", "published", "d"]
+            print(table.to_string(index=False))
+
+        print(f"\n=== {corpus} — cost ===")
+        print(costs(arguments.results, corpus).to_string(index=False))
 
 
 if __name__ == "__main__":

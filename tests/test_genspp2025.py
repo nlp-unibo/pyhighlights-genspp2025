@@ -416,3 +416,54 @@ def test_the_search_scores_candidates_across_the_workers_the_job_allocates():
     for key in (TOY_GENSPP_TRAINER, HATEXPLAIN_GENSPP_TRAINER):
         search = Registry.from_key(key, expected_type=GenSPPTrainer)
         assert [str(device) for device in search.devices] == ["cpu"] * 8
+
+
+def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path):
+    """The other half of a comparison: what the numbers took to produce.
+
+    Nothing is published to set these beside, so the table is measured alone
+    -- and a model that has not been run, or a tree written before the library
+    reported costs, has to say so rather than print a zero.
+    """
+    import json
+
+    import compare
+
+    run = {
+        "cost_runtime_s": 7200.0,
+        "cost_runtime_per_run_s": 11.4,
+        "cost_inference_batch_s": 0.0042,
+        "cost_inference_epoch_s": 1.5,
+        "cost_memory_mb": 8000.0,
+        "cost_memory_per_run_mb": 1000.0,
+        "cost_parameters": 2_574_148.0,
+        "cost_models": 5050.0,
+        "cost_concurrency": 8.0,
+    }
+    directory = tmp_path / "toy-genspp" / "2026-01-01T00-00-00"
+    directory.mkdir(parents=True)
+    (directory / "results.json").write_text(
+        json.dumps(
+            {
+                "name": "toy-genspp",
+                "seeds": [2023],
+                "runs": [run],
+                "summary": {
+                    name: {"mean": value, "std": 0.0, "values": [value]}
+                    for name, value in run.items()
+                },
+            }
+        )
+    )
+
+    table = compare.costs(tmp_path, "toy").set_index("model")
+
+    # Each in the unit it reads best in, and both counts as counts.
+    assert table.loc["genspp", "runtime/seed"].startswith("2.00h")
+    assert table.loc["genspp", "runtime/model"].startswith("11.40s")
+    assert table.loc["genspp", "inference/batch"].startswith("4.2")
+    assert table.loc["genspp", "parameters"] == "2.57M"
+    assert table.loc["genspp", "models trained"] == "5,050"
+    assert table.loc["genspp", "at once"] == "8"
+    # And a cell nobody has measured.
+    assert set(table.loc["fr"]) == {"-"}

@@ -18,7 +18,7 @@ published, and what it takes to run them on a cluster.
 |---|---|
 | `genspp2025/configurations/` | the paper's values, one module per kind of thing, one package per corpus |
 | `published.py` | Tables 1 and 2, transcribed. Nothing computed |
-| `compare.py` | a results tree beside those numbers |
+| `compare.py` | a results tree beside those numbers, and what it cost to produce |
 | `run.py` | run one cell, or a corpus's five |
 | `cluster/` | the Apptainer image and the Slurm jobs |
 
@@ -61,6 +61,29 @@ One job per model, five per corpus. From the paper's appendix, a seed takes
 ~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain
 — so GenSPP is hours where a baseline is minutes, and splitting per model
 keeps a table off the slowest cell's critical path.
+
+### The cost table
+
+`compare.py` prints a second table per corpus: runtime, inference time, memory
+and parameters, from the `cost_` columns every seed writes. The paper reports
+none of it, so there is no published half — it is filled by running the
+experiments.
+
+```
+=== toy — cost ===
+ model  runtime/model   runtime/seed inference/batch inference/pass memory/model parameters models trained at once
+    fr 0.47s +/- 0.00 0.47s +/- 0.00     4.1 +/- 0.0 0.17s +/- 0.00    889 +/- 0       2.3k              1       1
+genspp 2.44s +/- 0.00 2.44s +/- 0.00     2.5 +/- 0.0 0.12s +/- 0.00    224 +/- 0       2.9k              4       4
+```
+
+**`runtime/model` is the column to compare rows on.** A baseline trains one
+model per seed; GenSPP trains its founders plus every generation's children,
+several at a time, and reports the winner — so `runtime/seed` would say a
+search is as cheap as the machine that ran it. The per-model figure is
+`runtime × at-once / models-trained`, which for a baseline is its own wall
+clock. `inference/batch` is in milliseconds, `memory/model` in megabytes, and
+a cell reads `-` where a model has not been run or the tree predates the
+library reporting costs.
 
 A search scores eight candidates at once, one per worker, which is the
 released implementation's pool and the job's `--cpus-per-task=8`. It is worth
