@@ -10,13 +10,28 @@
 # No --chdir: the job runs in the directory it was submitted from, so submit
 # from the repository root.
 
-# Containers are built on sbuild, never on a login node -- `apptainer` exists
+# The image is pulled on sbuild, never on a login node -- `apptainer` exists
 # only on the compute nodes, so nothing containerized runs from a login shell
-# at all (`apptainer: command not found`). This job also builds the registry
-# and fetches the toy corpus, because both need the image.
+# at all (`apptainer: command not found`). This job also installs the pinned
+# packages, builds the registry and fetches the toy corpus, because all three
+# need the image.
 #
 #   mkdir -p logs && sbatch cluster/build.sbatch
 #   squeue -u $USER          # then read logs/build_<jobid>.log
+#
+# The image is pulled rather than built from a definition file. A definition
+# file's `%post` runs under fakeroot, and apptainer injects the host's
+# `libfakeroot.so` into the container to do it, so a host newer than the base
+# image fails before pip is reached at all:
+#
+#   /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+#   (required by /.singularity.d/libs/libfakeroot.so)
+#
+# Every `pytorch/pytorch` runtime tag is Ubuntu 22.04, which carries glibc
+# 2.35, so no tag of that base satisfies a host needing 2.38. A pull runs no
+# `%post`, so the two pinned packages go into a virtualenv on scratch instead,
+# built with the image's own Python and with the image's torch visible through
+# `--system-site-packages`. Same pins, and nothing needs root.
 
 set -euo pipefail
 
@@ -39,7 +54,48 @@ export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
 export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp"
 mkdir -p "$APPTAINER_CACHEDIR" "$APPTAINER_TMPDIR"
 
-apptainer build --force env.sif cluster/env.def
+# This reproduction has no transformer in it. Both corpora encode with a GRU,
+# hidden 8 on Toy and hidden 16 on HateXplain, so nothing loads a pretrained
+# language model and no dependency imposes a torch floor of its own. The base
+# is the stock runtime image, the smallest one that runs the library.
+IMAGE=docker://pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
+apptainer pull --force env.sif "$IMAGE"
+
+# The pinned packages, in a virtualenv on scratch rather than in the image.
+#
+# Each pin is a defect rather than a preference. pyhighlights 0.12.0 reports
+# what a run cost under `cost_`, which is the table `compare.py` prints beside
+# Table 1. 0.11.0 below it is what `ToyLoader` reads a published corpus with,
+# where earlier versions read it with a `GenSPPToyLoader` that no longer
+# exists and `ToyLoader(url=...)` is an unknown argument -- so the failure mode
+# is training on a corpus of the right shape and the wrong content. 0.9.0
+# below that renamed `AnnotationAggregator(rationale=)` to `highlights=` and
+# `RATIONALES` to `HIGHLIGHTS`, which the HateXplain pipeline calls, and
+# carries the GenSPP fixes this reproduction depends on to mean anything.
+#
+# cinnamon-core `>=2.1.3` is pyhighlights' own floor, repeated because 2.1.2
+# forgot every module below a scanned root at the next reset, so a second build
+# resolved a second copy of every class --
+#
+#   TypeError: 'pyhighlights.components.tasks.SPPTask' resolves to SPPTask,
+#   which is not a subclass of SPPTask.
+#
+# -- and it is yanked.
+VENV="$SCRATCH/venv"
+if [ ! -x "$VENV/bin/python" ]; then
+  apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
+    python -m venv --system-site-packages "$VENV"
+fi
+apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
+  "$VENV/bin/pip" install --no-cache-dir --upgrade pip
+apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
+  "$VENV/bin/pip" install --no-cache-dir \
+  "pyhighlights==0.12.0" "cinnamon-core>=2.1.3,<3"
+
+# A wiring that cannot import the library is worth failing here rather than
+# three hours into a queue.
+apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
+  "$VENV/bin/python" -c "import pyhighlights, torch; print(pyhighlights.__version__, torch.__version__)"
 
 # Two checks the queue should not be the place to discover, in one registry
 # build: the keys resolve, and the toy corpus is on disk.
@@ -57,8 +113,9 @@ apptainer build --force env.sif cluster/env.def
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \
+  --env PYTHONUNBUFFERED=1 \
   --env XDG_CACHE_HOME="$SCRATCH/cache" \
-  env.sif python - <<'PY'
+  env.sif "$VENV/bin/python" - <<'PY'
 from pathlib import Path
 
 from cinnamon.registry import Registry
