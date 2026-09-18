@@ -31,9 +31,15 @@ rebuild, and the container never holds a second copy of every registration.
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
-uv run pytest                        # 11 tests, seconds
+uv run pytest                        # 12 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
+
+`--smoke` bounds a baseline with `trainer_args`, which is what Lightning
+reads. A search reads none of it — it builds a trainer per candidate — so the
+GenSPP cell takes a search of its own instead: two candidates, one generation,
+every other setting the paper's. Without it that cell ran the full fifty
+candidates over a hundred generations under a flag that promises minutes.
 
 ## On the cluster
 
@@ -55,6 +61,13 @@ One job per model, five per corpus. From the paper's appendix, a seed takes
 ~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain
 — so GenSPP is hours where a baseline is minutes, and splitting per model
 keeps a table off the slowest cell's critical path.
+
+A search scores eight candidates at once, one per worker, which is the
+released implementation's pool and the job's `--cpus-per-task=8`. It is worth
+less than eight times: a candidate is small, so most of its cost is building a
+Lightning trainer and stepping it from Python. Eight candidates of the Toy
+search, measured on a 24-core machine — 14.1 s on one worker, 10.0 s on eight,
+7.4 s on eight with torch held to a thread each.
 
 ### What `build.sbatch` stages
 
@@ -114,15 +127,11 @@ The artifact this configuration names holds the corpus in the library's own
 columns, converted when the artifact is built, so nothing converts it on the
 way in.
 
-**It is not deposited yet.** Zenodo record
-[10.5281/zenodo.22711449](https://doi.org/10.5281/zenodo.22711449) holds
-`pyhighlights-genspp-toy-v1.zip`, the release's own pickle. The converted
-`pyhighlights-genspp-toy-v2.zip` is built by
-`pyhighlights/tools/build_datasets.py --skip-r2a` and its digest is already
-pinned in `genspp2025/configurations/toy/datasets.py`, but publishing it means
-a new version of the record, which gets a new id — `RECORD` there is what to
-update once it exists. Until then a toy run fetches a 404, and the corpus is
-read with the proxy below instead.
+It is [10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019),
+`pyhighlights-genspp-toy-v2.zip`, the second version of the record — the first
+holds the release's own pickle. `pyhighlights/tools/build_datasets.py
+--skip-r2a` reproduces the published bytes from that pickle, and
+`genspp2025/configurations/toy/datasets.py` pins their digest.
 
 `genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for the
 **original** pickle — what the published record still carries, what the

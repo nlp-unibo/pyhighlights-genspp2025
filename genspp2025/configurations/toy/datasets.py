@@ -12,24 +12,19 @@ from genspp2025.configurations.keys import (
 #: concept one: the digest below pins these exact bytes, and a concept DOI
 #: resolves to whatever is newest.
 #:
-#: **Still the v1 record, and v2 is not deposited yet.** The record published
-#: at `10.5281/zenodo.22711449 <https://doi.org/10.5281/zenodo.22711449>`_
-#: holds ``pyhighlights-genspp-toy-v1.zip``, which is the release's own pickle
-#: and needs :class:`~genspp2025.components.corpora.ReleasedToyLoader` to read.
-#: What this configuration names is the converted artifact,
-#: ``pyhighlights-genspp-toy-v2.zip``, which
-#: ``pyhighlights/tools/build_datasets.py --skip-r2a`` builds byte for byte and
-#: :data:`SHA256` already pins. Zenodo cannot add a file to a published record,
-#: so depositing it means a new version of concept
-#: `10.5281/zenodo.22711448 <https://doi.org/10.5281/zenodo.22711448>`_ -- and
-#: a new version gets its own record id. Set it here once that is published;
-#: until then a run of this corpus fetches a 404.
-RECORD = "22711449"
+#: `10.5281/zenodo.22828019 <https://doi.org/10.5281/zenodo.22828019>`_, the
+#: second version of concept `10.5281/zenodo.22711448
+#: <https://doi.org/10.5281/zenodo.22711448>`_. The first version holds
+#: ``pyhighlights-genspp-toy-v1.zip``, the release's own pickle, which needs
+#: :class:`~genspp2025.components.corpora.ReleasedToyLoader` to read; this one
+#: holds the corpus already in the library's columns.
+RECORD = "22828019"
 #: The artifact this configuration reads, as the build names it.
 ARCHIVE = "pyhighlights-genspp-toy-v2.zip"
 URL = f"https://zenodo.org/api/records/{RECORD}/files/{ARCHIVE}/content"
-#: Digest of the built artifact, which is deterministic: two builds of the same
-#: released pickle produce the same bytes, so this pins the deposit in advance.
+#: Digest of the deposited artifact, checked against the published file. The
+#: build is deterministic, so ``build_datasets.py --skip-r2a`` reproduces these
+#: bytes from the released pickle.
 SHA256 = "d527ff51dd143e51d89251895f6b691f8bc91c707011abce7298b374d6b868f9"
 
 

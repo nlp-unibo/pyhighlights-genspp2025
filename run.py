@@ -5,6 +5,9 @@
     python run.py hatexplain --embeddings glove.twitter.27B.25d.txt
     python run.py toy --smoke               # one seed, one batch, minutes
 
+`--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
+search of its own, since a search reads no trainer argument.
+
 The registry is built over this package with the library beside it, so an edit
 here runs without reinstalling anything -- which is why the container installs
 `pyhighlights` and not this repository.
@@ -40,15 +43,33 @@ def keys(corpus: str):
     package registering nothing on import is that a run says which half it
     wants.
     """
+    module = corpus_keys(corpus)
+    prefix = "TOY" if corpus == "toy" else "HATEXPLAIN"
+    return {
+        model: getattr(module, f"{prefix}_{model.upper()}_TASK") for model in MODELS
+    }
+
+
+def corpus_keys(corpus: str):
     if corpus == "toy":
         from genspp2025.configurations.toy import keys as module
+    else:
+        from genspp2025.configurations.hatexplain import keys as module
+    return module
 
-        return {model: getattr(module, f"TOY_{model.upper()}_TASK") for model in MODELS}
-    from genspp2025.configurations.hatexplain import keys as module
 
-    return {
-        model: getattr(module, f"HATEXPLAIN_{model.upper()}_TASK") for model in MODELS
-    }
+def smoke_search(corpus: str):
+    """The search a smoke run uses instead of the paper's.
+
+    ``--smoke`` bounds a baseline with ``trainer_args``, which Lightning
+    reads. The search reads none of it -- it builds a trainer per candidate --
+    so the GenSPP cell ran its fifty candidates over a hundred generations
+    under a flag that promises minutes. The key below is two candidates and one
+    generation, and every other setting is the paper's.
+    """
+    module = corpus_keys(corpus)
+    prefix = "TOY" if corpus == "toy" else "HATEXPLAIN"
+    return getattr(module, f"{prefix}_GENSPP_SMOKE_TRAINER")
 
 
 def main() -> None:
@@ -86,7 +107,10 @@ def main() -> None:
     wanted = [arguments.model] if arguments.model else list(MODELS)
     for model in wanted:
         print(f"=== {arguments.corpus}-{model} ===", flush=True)
-        Registry.from_key(chosen[model], save_path=str(save_path), **extra).run()
+        cell = dict(extra)
+        if model == "genspp" and arguments.smoke:
+            cell["search"] = smoke_search(arguments.corpus)
+        Registry.from_key(chosen[model], save_path=str(save_path), **cell).run()
 
 
 if __name__ == "__main__":

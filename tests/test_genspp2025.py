@@ -9,6 +9,7 @@ import pytest
 import torch as th
 from cinnamon.registry import Registry
 from pyhighlights.components.loaders import ToyLoader
+from pyhighlights.components.models.spp.genspp import GenSPPTrainer
 from pyhighlights.components.models.spp.implementations import GRUBackbone
 from pyhighlights.components.preprocessors import Preprocessor
 from pyhighlights.utility.embeddings import one_hot_table
@@ -36,6 +37,7 @@ from genspp2025.configurations.toy.keys import (
     TOY_BENCHMARK,
     TOY_FR_TASK,
     TOY_GENSPP,
+    TOY_GENSPP_SMOKE_TRAINER,
     TOY_GENSPP_TASK,
     TOY_GENSPP_TRAINER,
     TOY_MGR,
@@ -382,3 +384,35 @@ def test_the_hatexplain_pipeline_folds_classes_before_it_counts_votes(tmp_path):
     assert labels["who cares"] == 0
     assert set(processed["train"]["label"]) <= {0, 1}
     assert processed["val"]["label"].tolist() == [1]
+
+
+def test_a_smoke_search_is_small_where_trainer_arguments_cannot_reach():
+    """`--smoke` bounds a baseline through Lightning. A search reads none of it.
+
+    It builds a trainer per candidate, so the paper's fifty candidates over a
+    hundred generations ran in full under a flag that promises minutes. The
+    smoke key is the same search, small enough to finish.
+    """
+    build_registry()
+    paper = Registry.from_key(TOY_GENSPP_TRAINER, expected_type=GenSPPTrainer)
+    smoke = Registry.from_key(TOY_GENSPP_SMOKE_TRAINER, expected_type=GenSPPTrainer)
+
+    assert (paper.population_size, paper.n_generations) == (50, 100)
+    assert (smoke.population_size, smoke.n_generations) == (2, 1)
+    assert smoke.predictor_epochs == 1
+    # Everything the search is otherwise, it still is.
+    assert smoke.model == paper.model
+    assert smoke.task_loss_limit == paper.task_loss_limit
+    assert smoke.mutation_std == paper.mutation_std
+
+
+def test_the_search_scores_candidates_across_the_workers_the_job_allocates():
+    """One worker leaves seven of the job's eight cores to one candidate.
+
+    `cluster/run.sbatch` asks for eight, and the released implementation scores
+    on a pool of that size.
+    """
+    build_registry()
+    for key in (TOY_GENSPP_TRAINER, HATEXPLAIN_GENSPP_TRAINER):
+        search = Registry.from_key(key, expected_type=GenSPPTrainer)
+        assert [str(device) for device in search.devices] == ["cpu"] * 8
