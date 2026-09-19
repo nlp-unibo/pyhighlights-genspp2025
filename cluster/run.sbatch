@@ -95,9 +95,13 @@ collect() {
 trap collect EXIT
 
 # The corpora come with the job rather than being read off scratch a record at
-# a time: `build.sbatch` stages them, and this copies that cache across in one
-# pass -- 47 MB of archives, against a run that would otherwise read them over
-# the network share.
+# a time: `build.sbatch` stages the toy corpus there, and this copies the
+# cache across in one pass -- single-digit megabytes, against a run that would
+# otherwise read it over the network share.
+#
+# HateXplain is not staged by the build, so its thirteen megabytes are fetched
+# by each job that wants them. Five downloads rather than one, which is the
+# price of not sharing a cache between five jobs that run at once.
 #
 # `PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
 # read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless that
