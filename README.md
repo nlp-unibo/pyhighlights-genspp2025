@@ -144,6 +144,13 @@ partway through the base image — `stream error: stream ID 7; INTERNAL_ERROR;
 received from peer` — which is an HTTP/2 reset on its side, and one attempt
 means the queue wait is paid again for it.
 
+Each step in the log carries the elapsed time since the job started, as
+`[+12:34]`. There are no progress bars: the output is a file rather than a
+terminal, so apptainer prints no bar and `mksquashfs` prints nothing at all.
+The stamps are what a second run is estimated from, and what separates a
+conversion that is working from one that is hung. GloVe is the exception —
+`wget` dots it, a megabyte a dot and thirty-two to a line.
+
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
 than inside it: the image is rebuilt whenever a pin moves, and this file

@@ -20,6 +20,16 @@
 
 set -euo pipefail
 
+# Where the job is, and how long it has been there. There are no progress bars
+# in this log: the output is a file rather than a terminal, so apptainer prints
+# no bar and `mksquashfs` prints nothing at all. Elapsed time per step is what
+# is left, and it is what a second run is estimated from -- a build that is
+# twenty minutes into the conversion reads as working rather than as hung.
+# `SECONDS` is the shell's own counter, started when the job did.
+step() {
+  printf '[+%02d:%02d] %s\n' "$((SECONDS / 60))" "$((SECONDS % 60))" "$*"
+}
+
 # Override SCRATCH to point somewhere else; the default is this account's
 # scratch directory.
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
@@ -99,7 +109,7 @@ mkdir -p "$APPTAINER_TMPDIR"
 # and it fails the whole build after however much had already transferred.
 # Three attempts rather than one, because a job that dies on it costs a queue
 # wait as well as the download.
-echo "building env.sif"
+step "building env.sif from cluster/env.def"
 for attempt in 1 2 3; do
   if apptainer build --ignore-fakeroot-command --force env.sif cluster/env.def; then
     break
@@ -125,6 +135,7 @@ done
 # node that may have no outbound network at all. It is read through the
 # registered `dataset` configuration, so the archive, the digest and the split
 # scheme are the ones a run uses rather than a second copy of them here.
+step "building the registry and fetching the toy corpus"
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \
@@ -165,8 +176,11 @@ if [ -f "$GLOVE" ]; then
 else
   # `-c` so an interrupted job resumes its download instead of starting the
   # 1.4 GB again, and the archive is removed only once the member is out.
-  wget -c -O "$GLOVE_DIR/glove.twitter.27B.zip" \
+  step "fetching glove (1.4 GB)"
+  wget -c --progress=dot:giga \
+    -O "$GLOVE_DIR/glove.twitter.27B.zip" \
     https://nlp.stanford.edu/data/glove.twitter.27B.zip
+  step "unzipping glove"
   unzip -o -j "$GLOVE_DIR/glove.twitter.27B.zip" glove.twitter.27B.25d.txt \
     -d "$GLOVE_DIR"
   rm -f "$GLOVE_DIR/glove.twitter.27B.zip"
@@ -178,4 +192,4 @@ fi
 awk 'NR==1 { if (NF != 26) { print "glove: " NF " fields on line 1, expected 26" > "/dev/stderr"; exit 1 } }' "$GLOVE"
 echo "glove staged: $(wc -l < "$GLOVE") vectors at $GLOVE"
 
-echo "built."
+step "built."
