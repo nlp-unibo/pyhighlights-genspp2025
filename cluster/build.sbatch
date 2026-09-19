@@ -182,6 +182,17 @@ mkdir -p "$GLOVE_DIR"
 if [ -f "$GLOVE" ]; then
   echo "glove already staged at $GLOVE"
 else
+  # Downloaded and unzipped on the node's own disk, then copied to scratch in
+  # one pass. Scratch collapses under small writes: measured on this node,
+  # `curl` writing its 16 kB buffers reached 41 kB/s there against 5.5 MB/s to
+  # local disk over the same seconds and the same URL, while `dd bs=1M` on the
+  # same filesystem reached 11.6 MB/s. So the download is not what should
+  # touch scratch -- the finished file is, once, in megabyte blocks.
+  LOCAL_GLOVE="$LOCAL_TMP/glove"
+  mkdir -p "$LOCAL_GLOVE"
+  # A part-downloaded archive from when this ran on scratch. It cannot be
+  # resumed from here and nothing else will ever remove it.
+  rm -f "$GLOVE_DIR/glove.twitter.27B.zip"
   # `-c` so an interrupted job resumes instead of starting the 1.4 GB again,
   # and the archive is removed only once the member is out. A dot is a
   # megabyte and a line thirty-two of them: fifty lines rather than fifty
@@ -194,7 +205,7 @@ else
   for url in "${GLOVE_URLS[@]}"; do
     step "fetching glove (1.4 GB) from $url"
     if wget -c --progress=dot:giga --read-timeout=60 --tries=2 \
-      -O "$GLOVE_DIR/glove.twitter.27B.zip" "$url"; then
+      -O "$LOCAL_GLOVE/glove.twitter.27B.zip" "$url"; then
       fetched=1
       break
     fi
@@ -205,9 +216,17 @@ else
     exit 1
   fi
   step "unzipping glove"
-  unzip -o -j "$GLOVE_DIR/glove.twitter.27B.zip" glove.twitter.27B.25d.txt \
-    -d "$GLOVE_DIR"
-  rm -f "$GLOVE_DIR/glove.twitter.27B.zip"
+  unzip -o -j "$LOCAL_GLOVE/glove.twitter.27B.zip" glove.twitter.27B.25d.txt \
+    -d "$LOCAL_GLOVE"
+
+  # Written under a temporary name and renamed, so an interrupted copy does
+  # not leave a short file where the next job's `-f` check would take it for a
+  # finished one. A rename within one filesystem is atomic.
+  step "copying glove to scratch"
+  dd if="$LOCAL_GLOVE/glove.twitter.27B.25d.txt" of="$GLOVE.partial" \
+    bs=1M status=none
+  mv "$GLOVE.partial" "$GLOVE"
+  rm -rf "$LOCAL_GLOVE"
 fi
 
 # Stanford publishes no digest for the archive, so the check is on the shape
