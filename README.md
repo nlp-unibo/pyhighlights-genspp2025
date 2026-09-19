@@ -106,10 +106,13 @@ search, measured on a 24-core machine — 14.1 s on one worker, 10.0 s on eight,
 
 ### What `build.sbatch` stages
 
-**The image and the packages.** The image is *pulled*, not built from a
-definition file. A definition file's `%post` runs under fakeroot, and
-apptainer injects the host's `libfakeroot.so` to do it, so a host newer than
-the base image fails before pip is reached:
+**The image and the packages.** The image is built from `cluster/env.def`,
+which holds the base tag and the pins, so the packages are in the image rather
+than in a virtualenv every job has to find.
+
+`--ignore-fakeroot-command` is not optional. Without it apptainer wraps
+`%post` in its own `fakeroot` and injects the host's `libfakeroot.so`, so a
+host newer than the base image fails before pip is reached:
 
 ```
 /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
@@ -117,32 +120,32 @@ the base image fails before pip is reached:
 ```
 
 Every `pytorch/pytorch` runtime tag is Ubuntu 22.04 with glibc 2.35, so no tag
-of that base answers a host needing 2.38. A pull runs no `%post` at all, and
-the pinned packages go into `$SCRATCH/venv` instead — built with the image's
-own Python, `--system-site-packages` so the image's torch and CUDA userspace
-stay visible. The jobs then run `$SCRATCH/venv/bin/python`. Same pins, and
-nothing needs root.
+of that base answers a host needing 2.38. The flag drops the wrapper and
+leaves the namespace's own root mapping, which is all `%post` needs now that
+it only runs pip.
 
-The pull is cached on scratch but **assembled on the node's own disk**.
-Converting the layers to a SIF unpacks the whole image as ordinary files and
-squashes them back, which is tens of thousands of small writes: on
-`/scratch.hpc` that step managed 1.4 GB of a 7 GB image in two and a half
-hours, with the process at one percent of a core because it was waiting on the
-filesystem. A node whose local disk holds less than 20 GB falls back to
-scratch and says so in the log. The image is also pulled only when `env.sif` is
-absent, so a rebuild that moves a pip floor does not repeat the conversion;
-delete `env.sif` to fetch the tag again.
+A build is also the cheap way round a slow filesystem: it writes the finished
+SIF once, where a cached `apptainer pull` writes it twice — once into
+`$APPTAINER_CACHEDIR/cache/oci-tmp` and once to the destination — and scratch
+here measures 11.6 MB/s sequential.
 
-The pull runs with `--disable-cache` for the same reason. A cached pull writes
-the finished image twice, once into `$APPTAINER_CACHEDIR/cache/oci-tmp` and
-once to the destination, and scratch here measures 11.6 MB/s sequential, so
-the second copy is ten minutes nobody reads back: the tag is pinned and the
-guard above skips the pull entirely once the image exists.
+The base layers are cached on scratch but the image is **assembled on the
+node's own disk**. Converting the layers to a SIF unpacks the whole image as
+ordinary files and squashes them back, which is tens of thousands of small
+writes: on `/scratch.hpc` that step managed 1.4 GB of a 7 GB image in two and
+a half hours, with the process at one percent of a core because it was waiting
+on the filesystem. A node whose local disk holds less than 20 GB falls back to
+scratch and says so in the log.
+
+The build is attempted up to three times. The registry drops connections
+partway through the base image — `stream error: stream ID 7; INTERNAL_ERROR;
+received from peer` — which is an HTTP/2 reset on its side, and one attempt
+means the queue wait is paid again for it.
 
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
-than inside it: the image is pulled again whenever its tag moves, and this
-file never changes. Stanford publishes no digest, so the check is on the shape
+than inside it: the image is rebuilt whenever a pin moves, and this file
+never changes. Stanford publishes no digest, so the check is on the shape
 of what came out — 25 dimensions plus the token is 26 fields on line one.
 
 `run.sbatch` still refuses to start without it, and so does the task:

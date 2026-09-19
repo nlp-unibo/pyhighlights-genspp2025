@@ -61,13 +61,12 @@ if [ "$CORPUS" = "hatexplain" ]; then
   EXTRA+=(--embeddings "$GLOVE")
 fi
 
-# The pinned packages live in a virtualenv on scratch rather than in the
-# image, which is pulled -- see `build.sbatch` for why. `OMP_NUM_THREADS` is
-# set here because Slurm gives the job its cores, and torch sizing its pool to
-# the whole node would oversubscribe every one of them.
-VENV="$SCRATCH/venv"
-if [ ! -x "$VENV/bin/python" ]; then
-  echo "missing $VENV -- run cluster/build.sbatch first" >&2
+# The pinned packages are in the image -- see `build.sbatch` and
+# `cluster/env.def`. `OMP_NUM_THREADS` is set here because Slurm gives the job
+# its cores, and torch sizing its pool to the whole node would oversubscribe
+# every one of them.
+if [ ! -f env.sif ]; then
+  echo "missing $PWD/env.sif -- run cluster/build.sbatch first" >&2
   exit 2
 fi
 
@@ -77,4 +76,4 @@ apptainer exec --nv \
   --env PYTHONUNBUFFERED=1 \
   --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
   --env XDG_CACHE_HOME="$SCRATCH/cache" \
-  env.sif "$VENV/bin/python" run.py "$CORPUS" --model "$MODEL" "${EXTRA[@]}" "$@"
+  env.sif python run.py "$CORPUS" --model "$MODEL" "${EXTRA[@]}" "$@"
