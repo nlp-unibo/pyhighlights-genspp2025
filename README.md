@@ -59,9 +59,10 @@ ends, so a job that hits its time limit still leaves the cells it finished.
 One directory per job, because that guidance also warns that two jobs sharing
 a node-local path clean up under each other.
 
-The corpora travel with the job too. `build.sbatch` stages them under
-`$SCRATCH/cache/pyhighlights` and each run copies that across in one pass —
-47 MB of archives, rather than reading them over the share. The variable is
+The corpora travel with the job too. `build.sbatch` stages the toy corpus
+under `$SCRATCH/cache/pyhighlights` and each run copies that cache across in
+one pass, rather than reading it over the share. HateXplain is not staged, so
+each of its five jobs fetches its own thirteen megabytes. The variable is
 `PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
 read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless told
 otherwise, and apptainer binds your home into the container, so leaving it

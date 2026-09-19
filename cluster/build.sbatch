@@ -90,15 +90,18 @@ mkdir -p "$LOCAL_ROOT"
 find "$LOCAL_ROOT" -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf {} + 2>/dev/null || true
 LOCAL_TMP="$LOCAL_ROOT/${SLURM_JOB_ID:-$$}"
 mkdir -p "$LOCAL_TMP"
-trap 'rm -rf "$LOCAL_TMP"' EXIT
 AVAILABLE=$(df -Pk "$LOCAL_TMP" | awk 'NR==2 { print int($4 / 1048576) }')
 if [ "${AVAILABLE:-0}" -ge 20 ]; then
   export APPTAINER_TMPDIR="$LOCAL_TMP"
 else
   echo "local disk has ${AVAILABLE:-0}G, assembling on scratch instead (slow)" >&2
-  export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp"
+  # Per job here too. This is the branch that unpacks nine gigabytes onto the
+  # share, and a killed job used to leave them there -- which is how the
+  # quota that stopped the first build filled up.
+  export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp/${SLURM_JOB_ID:-$$}"
 fi
 mkdir -p "$APPTAINER_TMPDIR"
+trap 'rm -rf "$LOCAL_TMP" "$APPTAINER_TMPDIR"' EXIT
 
 # Built from `cluster/env.def`, which holds the base tag and the pins, rather
 # than pulled: the pins end up in the image instead of in a virtualenv every
@@ -210,9 +213,10 @@ else
   # touch scratch -- the finished file is, once, in megabyte blocks.
   LOCAL_GLOVE="$LOCAL_TMP/glove"
   mkdir -p "$LOCAL_GLOVE"
-  # A part-downloaded archive from when this ran on scratch. It cannot be
-  # resumed from here and nothing else will ever remove it.
-  rm -f "$GLOVE_DIR/glove.twitter.27B.zip"
+  # A part-downloaded archive from when this ran on scratch, and a half-copied
+  # file from a job that was killed mid-`dd`. Neither can be resumed from
+  # here, both are on a share with a quota, and nothing else removes them.
+  rm -f "$GLOVE_DIR/glove.twitter.27B.zip" "$GLOVE.partial"
   # `-c` so a second URL resumes what the first left rather than starting the
   # 1.4 GB again; the directory is this job's, so a resubmitted job starts
   # over. A dot is a
