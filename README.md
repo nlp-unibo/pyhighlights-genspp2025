@@ -79,6 +79,13 @@ sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
 python compare.py --results results
 ```
 
+`run.sbatch` names `--partition=l40s`; the cluster's default is `sbuild`, the
+image builder, which has no GPU and 32095 MB — less than the 32768 MB a
+`--mem=32G` job asks for, so a submission there is refused outright. `l40s`
+has four nodes where the other GPU partitions have one, so five array tasks
+spread rather than queue behind one another. Override with `sbatch
+--partition=<name> cluster/run.sbatch ...`.
+
 One job per model, five per corpus. From the paper's appendix, a seed takes
 ~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain
 — so GenSPP is hours where a baseline is minutes, and splitting per model
