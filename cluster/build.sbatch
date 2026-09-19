@@ -65,13 +65,22 @@ mkdir -p "$APPTAINER_CACHEDIR"
 # so the device nodes cannot be unpacked there at all.
 #
 # Scratch is the fallback for a node too small to hold the unpacked image
-# beside the SIF -- slow beats running out of room -- and the directory is
-# cleared first, because a cancelled build leaves nine gigabytes of unpacked
-# image behind and the next build would measure the free space around it.
-# Nothing here outlives a job: the layer cache is on scratch.
-LOCAL_TMP="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
-rm -rf "$LOCAL_TMP"
+# beside the SIF -- slow beats running out of room.
+#
+# One directory per job, removed when the job ends however it ends. The
+# cluster's own guidance warns that two jobs sharing a node-local path will
+# clean up under each other, and a shared name did exactly that: a cancelled
+# build left nine gigabytes of unpacked image behind, and the next build
+# measured the free space around it and fell back to scratch for no reason.
+# A job id in the name makes the directory this job's to delete. Anything
+# older than a day is a job that was killed outright, since nothing here
+# outlives a job by design.
+LOCAL_ROOT="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
+mkdir -p "$LOCAL_ROOT"
+find "$LOCAL_ROOT" -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf {} + 2>/dev/null || true
+LOCAL_TMP="$LOCAL_ROOT/${SLURM_JOB_ID:-$$}"
 mkdir -p "$LOCAL_TMP"
+trap 'rm -rf "$LOCAL_TMP"' EXIT
 AVAILABLE=$(df -Pk "$LOCAL_TMP" | awk 'NR==2 { print int($4 / 1048576) }')
 if [ "${AVAILABLE:-0}" -ge 20 ]; then
   export APPTAINER_TMPDIR="$LOCAL_TMP"
@@ -193,8 +202,9 @@ else
   # A part-downloaded archive from when this ran on scratch. It cannot be
   # resumed from here and nothing else will ever remove it.
   rm -f "$GLOVE_DIR/glove.twitter.27B.zip"
-  # `-c` so an interrupted job resumes instead of starting the 1.4 GB again,
-  # and the archive is removed only once the member is out. A dot is a
+  # `-c` so a second URL resumes what the first left rather than starting the
+  # 1.4 GB again; the directory is this job's, so a resubmitted job starts
+  # over. A dot is a
   # megabyte and a line thirty-two of them: fifty lines rather than fifty
   # thousand, which is as close to a progress bar as a log file gets.
   #
