@@ -10,28 +10,13 @@
 # No --chdir: the job runs in the directory it was submitted from, so submit
 # from the repository root.
 
-# The image is pulled on sbuild, never on a login node -- `apptainer` exists
+# The image is built on sbuild, never on a login node -- `apptainer` exists
 # only on the compute nodes, so nothing containerized runs from a login shell
-# at all (`apptainer: command not found`). This job also installs the pinned
-# packages, builds the registry and fetches the toy corpus, because all three
-# need the image.
+# at all (`apptainer: command not found`). This job also builds the registry
+# and fetches the toy corpus, because both need the image.
 #
 #   mkdir -p logs && sbatch cluster/build.sbatch
 #   squeue -u $USER          # then read logs/build_<jobid>.log
-#
-# The image is pulled rather than built from a definition file. A definition
-# file's `%post` runs under fakeroot, and apptainer injects the host's
-# `libfakeroot.so` into the container to do it, so a host newer than the base
-# image fails before pip is reached at all:
-#
-#   /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
-#   (required by /.singularity.d/libs/libfakeroot.so)
-#
-# Every `pytorch/pytorch` runtime tag is Ubuntu 22.04, which carries glibc
-# 2.35, so no tag of that base satisfies a host needing 2.38. A pull runs no
-# `%post`, so the two pinned packages go into a virtualenv on scratch instead,
-# built with the image's own Python and with the image's torch visible through
-# `--system-site-packages`. Same pins, and nothing needs root.
 
 set -euo pipefail
 
@@ -76,63 +61,47 @@ else
 fi
 mkdir -p "$APPTAINER_TMPDIR"
 
-# This reproduction has no transformer in it. Both corpora encode with a GRU,
-# hidden 8 on Toy and hidden 16 on HateXplain, so nothing loads a pretrained
-# language model and no dependency imposes a torch floor of its own. The base
-# is the stock runtime image, the smallest one that runs the library.
-IMAGE=docker://pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
-# Pulled once, and without the cache. The conversion is the expensive half of
-# this job and the tag is pinned, so a rebuild that exists to move a pip floor
-# has no reason to repeat it. Delete `env.sif` to fetch the tag again.
+# Built from `cluster/env.def`, which holds the base tag and the pins. A
+# definition file rather than a bare `apptainer pull` for two reasons: the
+# pinned packages go into the image itself instead of a virtualenv on scratch
+# that every job has to bind and point at, and a build writes the finished SIF
+# once where a cached pull writes it twice -- once into the cache and once to
+# the destination, both on a filesystem measured here at 11.6 MB/s.
 #
-# `--disable-cache` because a cached pull writes the finished image twice: once
-# into `$APPTAINER_CACHEDIR/cache/oci-tmp` and once to the destination. Both
-# copies land on scratch, and the second one was measured here at 0.8 MB/s,
-# which is two and a half hours for a seven gigabyte image before the real
-# destination is even written. Nothing reuses that cached SIF: the tag is
-# pinned, the guard above skips the pull once `env.sif` exists, and the layer
-# blobs it would also hold are worth less than the hours.
-if [ -f env.sif ]; then
-  echo "image already built at $PWD/env.sif"
-else
-  apptainer pull --disable-cache env.sif "$IMAGE"
-fi
-
-# The pinned packages, in a virtualenv on scratch rather than in the image.
+# `--ignore-fakeroot-command` is not optional. The user is not in
+# `/etc/subuid`, so apptainer builds under a root-mapped namespace and wraps
+# `%post` in its own `fakeroot`, injecting a host `libfakeroot.so` built
+# against GLIBC 2.38. The base image is Ubuntu 22.04, which has 2.35, so
+# `%post` dies before its first line:
 #
-# Each pin is a defect rather than a preference. pyhighlights 0.12.0 reports
-# what a run cost under `cost_`, which is the table `compare.py` prints beside
-# Table 1. 0.11.0 below it is what `ToyLoader` reads a published corpus with,
-# where earlier versions read it with a `GenSPPToyLoader` that no longer
-# exists and `ToyLoader(url=...)` is an unknown argument -- so the failure mode
-# is training on a corpus of the right shape and the wrong content. 0.9.0
-# below that renamed `AnnotationAggregator(rationale=)` to `highlights=` and
-# `RATIONALES` to `HIGHLIGHTS`, which the HateXplain pipeline calls, and
-# carries the GenSPP fixes this reproduction depends on to mean anything.
+#   /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
+#     (required by /.singularity.d/libs/libfakeroot.so)
 #
-# cinnamon-core `>=2.1.3` is pyhighlights' own floor, repeated because 2.1.2
-# forgot every module below a scanned root at the next reset, so a second build
-# resolved a second copy of every class --
+# The flag drops that wrapper and leaves the namespace's own root mapping,
+# which is all `%post` needs now that it only runs pip.
 #
-#   TypeError: 'pyhighlights.components.tasks.SPPTask' resolves to SPPTask,
-#   which is not a subclass of SPPTask.
+# Retried, because the registry drops connections partway through the base
+# image:
 #
-# -- and it is yanked.
-VENV="$SCRATCH/venv"
-if [ ! -x "$VENV/bin/python" ]; then
-  apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
-    python -m venv --system-site-packages "$VENV"
-fi
-apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
-  "$VENV/bin/pip" install --no-cache-dir --upgrade pip
-apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
-  "$VENV/bin/pip" install --no-cache-dir \
-  "pyhighlights==0.12.0" "cinnamon-core>=2.1.3,<3"
-
-# A wiring that cannot import the library is worth failing here rather than
-# three hours into a queue.
-apptainer exec --bind "$SCRATCH:$SCRATCH" env.sif \
-  "$VENV/bin/python" -c "import pyhighlights, torch; print(pyhighlights.__version__, torch.__version__)"
+#   error writing layer: stream error: stream ID 7; INTERNAL_ERROR;
+#   received from peer
+#
+# That is the registry resetting an HTTP/2 stream, not anything this job did,
+# and it fails the whole build after however much had already transferred.
+# Three attempts rather than one, because a job that dies on it costs a queue
+# wait as well as the download.
+echo "building env.sif"
+for attempt in 1 2 3; do
+  if apptainer build --ignore-fakeroot-command --force env.sif cluster/env.def; then
+    break
+  fi
+  if [ "$attempt" = 3 ]; then
+    echo "build failed three times; the registry is unreachable or unwell" >&2
+    exit 1
+  fi
+  echo "build failed (attempt $attempt), retrying in 60s" >&2
+  sleep 60
+done
 
 # Two checks the queue should not be the place to discover, in one registry
 # build: the keys resolve, and the toy corpus is on disk.
@@ -152,7 +121,7 @@ apptainer exec --nv \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
   --env XDG_CACHE_HOME="$SCRATCH/cache" \
-  env.sif "$VENV/bin/python" - <<'PY'
+  env.sif python - <<'PY'
 from pathlib import Path
 
 from cinnamon.registry import Registry
