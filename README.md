@@ -152,10 +152,17 @@ stops before it and a later submission picks it up — everything above it is a
 no-op once the image exists.
 
 It is fetched from Stanford's own upload to the Hugging Face hub before
-`nlp.stanford.edu`, which has served it here at 30 kB/s: thirteen hours for
-the 1.4 GB. The order is a fallback rather than a race, because `wget` has no
-minimum-rate option — `--read-timeout` fires on a host that stops sending,
-not on one that trickles. Stanford publishes no digest, so the check is on the shape
+`nlp.stanford.edu`, and the order is a fallback rather than a race: `wget` has
+no minimum-rate option, and `--read-timeout` fires on a host that stops
+sending rather than on one that trickles.
+
+**The download does not touch scratch.** It is fetched and unzipped on the
+node's own disk and copied across in one pass, because scratch collapses under
+small writes. Measured on a build node, same URL and same fifteen seconds:
+`curl` writing its 16 kB buffers reached 41 kB/s to `/scratch.hpc` against
+5.5 MB/s to `/tmp`, while `dd bs=1M` on that same filesystem reached
+11.6 MB/s. It is a fault worth reporting rather than only coding around —
+every run writes its results there too. Stanford publishes no digest, so the check is on the shape
 of what came out — 25 dimensions plus the token is 26 fields on line one.
 
 `run.sbatch` still refuses to start without it, and so does the task:
