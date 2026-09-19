@@ -92,10 +92,33 @@ IMAGE=docker://pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime
 # destination is even written. Nothing reuses that cached SIF: the tag is
 # pinned, the guard above skips the pull once `env.sif` exists, and the layer
 # blobs it would also hold are worth less than the hours.
+#
+# Retried, because the registry drops connections partway through the seven
+# gigabytes:
+#
+#   error writing layer: stream error: stream ID 7; INTERNAL_ERROR;
+#   received from peer
+#
+# That is the registry resetting an HTTP/2 stream, not anything this job did,
+# and it fails the whole pull after however much had already transferred.
+# Three attempts rather than one, because a job that dies on it costs a queue
+# wait as well as the download. A partial `env.sif` is removed first: apptainer
+# leaves one behind, and the guard above would take it for a finished image.
 if [ -f env.sif ]; then
   echo "image already built at $PWD/env.sif"
 else
-  apptainer pull --disable-cache env.sif "$IMAGE"
+  for attempt in 1 2 3; do
+    if apptainer pull --disable-cache env.sif "$IMAGE"; then
+      break
+    fi
+    rm -f env.sif
+    if [ "$attempt" = 3 ]; then
+      echo "pull failed three times; the registry is unreachable or unwell" >&2
+      exit 1
+    fi
+    echo "pull failed (attempt $attempt), retrying in 60s" >&2
+    sleep 60
+  done
 fi
 
 # The pinned packages, in a virtualenv on scratch rather than in the image.
