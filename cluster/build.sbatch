@@ -50,7 +50,16 @@ mkdir -p "$APPTAINER_CACHEDIR"
 # So the assembly happens on the node's own disk, and scratch is the fallback
 # for a node whose local disk is too small to hold the unpacked image beside
 # the SIF. Slow is better than a build that runs out of room.
+#
+# Cleared first. A build that is cancelled -- by `scancel`, by a time limit,
+# by the registry -- leaves the unpacked image behind, nine gigabytes of it,
+# and nothing else ever removes it. The next build then measures the free
+# space with its own predecessor still occupying it, reads thirteen gigabytes
+# where the disk has twenty-two, and falls back to scratch for no reason.
+# Nothing here is worth keeping between jobs: the layer cache is on scratch
+# and this directory only ever holds one build's scratch space.
 LOCAL_TMP="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
+rm -rf "$LOCAL_TMP"
 mkdir -p "$LOCAL_TMP"
 AVAILABLE=$(df -Pk "$LOCAL_TMP" | awk 'NR==2 { print int($4 / 1048576) }')
 if [ "${AVAILABLE:-0}" -ge 20 ]; then
