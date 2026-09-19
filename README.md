@@ -20,7 +20,7 @@ published, and what it takes to run them on a cluster.
 | `published.py` | Tables 1 and 2, transcribed. Nothing computed |
 | `compare.py` | a results tree beside those numbers, and what it cost to produce |
 | `run.py` | run one cell, or a corpus's five |
-| `cluster/` | the Slurm jobs, and the image and virtualenv they stage |
+| `cluster/` | the Slurm jobs, and the image they build |
 
 Nothing registers on import. A run builds the registry over this package with
 the library beside it, which is why `pyhighlights` is installed on the cluster
@@ -32,7 +32,7 @@ registration.
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
-uv run pytest                        # 12 tests, seconds
+uv run pytest                        # 15 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
@@ -51,7 +51,7 @@ submitting.
 
 ```bash
 mkdir -p logs
-sbatch cluster/build.sbatch                       # image, packages, registry, corpus
+sbatch cluster/build.sbatch                       # image, registry, corpus, GloVe
 sbatch --array=0 cluster/run.sbatch toy --smoke   # says every cell builds
 sbatch cluster/run.sbatch toy                     # the five Toy cells
 sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
@@ -72,10 +72,10 @@ experiments.
 
 ```
 === toy — cost ===
- model  runtime/model   runtime/seed inference/batch inference/pass memory/peak parameters trainable frozen models trained at once
-    fr 0.45s +/- 0.00 0.45s +/- 0.00     4.1 +/- 0.0 0.17s +/- 0.00   888 +/- 0       2.3k      1.7k    600              1       1
-   mcd 0.57s +/- 0.00 0.57s +/- 0.00     5.9 +/- 0.0 0.23s +/- 0.00   891 +/- 0       4.6k      3.4k   1.2k              1       1
-genspp 2.27s +/- 0.00 2.27s +/- 0.00     2.6 +/- 0.0 0.13s +/- 0.00   898 +/- 0       2.9k       859   2.0k              4       4
+ model runtime/model runtime/seed inference/batch inference/pass memory/peak parameters trainable frozen models trained at once
+    fr  0.45s ± 0.00 0.45s ± 0.00       4.1 ± 0.0   0.17s ± 0.00     888 ± 0       2.3k      1.7k    600              1       1
+   mcd  0.57s ± 0.00 0.57s ± 0.00       5.9 ± 0.0   0.23s ± 0.00     891 ± 0       4.6k      3.4k   1.2k              1       1
+genspp  2.27s ± 0.00 2.27s ± 0.00       2.6 ± 0.0   0.13s ± 0.00     898 ± 0       2.9k       859   2.0k              4       4
 ```
 
 **`runtime/model` is the column to compare rows on.** A baseline trains one
@@ -106,9 +106,10 @@ search, measured on a 24-core machine — 14.1 s on one worker, 10.0 s on eight,
 
 ### What `build.sbatch` stages
 
-**The image and the packages.** The image is built from `cluster/env.def`,
-which holds the base tag and the pins, so the packages are in the image rather
-than in a virtualenv every job has to find.
+**The image.** Built from `cluster/env.def`, which holds the base tag and the
+pins, so a job needs nothing on scratch but its results. A build rather than
+an `apptainer pull` also writes the finished SIF once where a cached pull
+writes it twice, and scratch here measures 11.6 MB/s sequential.
 
 `--ignore-fakeroot-command` is not optional. Without it apptainer wraps
 `%post` in its own `fakeroot` and injects the host's `libfakeroot.so`, so a
@@ -124,37 +125,29 @@ of that base answers a host needing 2.38. The flag drops the wrapper and
 leaves the namespace's own root mapping, which is all `%post` needs now that
 it only runs pip.
 
-A build is also the cheap way round a slow filesystem: it writes the finished
-SIF once, where a cached `apptainer pull` writes it twice — once into
-`$APPTAINER_CACHEDIR/cache/oci-tmp` and once to the destination — and scratch
-here measures 11.6 MB/s sequential.
+The layers are cached on scratch but the image is **assembled on the node's
+own disk**, because assembly unpacks the whole image as ordinary files and
+squashes them back: on `/scratch.hpc` that managed 1.4 GB of a 7 GB image in
+two and a half hours, the process at one percent of a core waiting on the
+filesystem. A node with less than 20 GB free falls back to scratch and says
+so, and the directory is cleared first — a cancelled build leaves nine
+gigabytes of unpacked image behind, and the next one would measure the free
+space around it.
 
-The base layers are cached on scratch but the image is **assembled on the
-node's own disk**. Converting the layers to a SIF unpacks the whole image as
-ordinary files and squashes them back, which is tens of thousands of small
-writes: on `/scratch.hpc` that step managed 1.4 GB of a 7 GB image in two and
-a half hours, with the process at one percent of a core because it was waiting
-on the filesystem. A node whose local disk holds less than 20 GB falls back to
-scratch and says so in the log — and the directory is cleared first, because
-a cancelled build leaves its nine gigabytes of unpacked image behind and the
-next one would measure the free space around it.
+The build gets three attempts, for the registry resetting an HTTP/2 stream
+partway through the base image (`stream error: stream ID 7; INTERNAL_ERROR;
+received from peer`).
 
-The build is attempted up to three times. The registry drops connections
-partway through the base image — `stream error: stream ID 7; INTERNAL_ERROR;
-received from peer` — which is an HTTP/2 reset on its side, and one attempt
-means the queue wait is paid again for it.
-
-Each step in the log carries the elapsed time since the job started, as
-`[+12:34]`. There are no progress bars: the output is a file rather than a
-terminal, so apptainer prints no bar and `mksquashfs` prints nothing at all.
-The stamps are what a second run is estimated from, and what separates a
-conversion that is working from one that is hung. GloVe is the exception —
+Each step logs the elapsed time since the job started, as `[+12:34]`. There
+are no progress bars — the output is a file, so apptainer prints no bar and
+`mksquashfs` prints nothing at all — and the stamps are what tells a
+conversion that is working from one that is hung. GloVe is the exception:
 `wget` dots it, a megabyte a dot and thirty-two to a line.
 
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
-than inside it: the image is rebuilt whenever a pin moves, and this file
-never changes. Stanford publishes no digest, so the check is on the shape
+than inside it: the image is rebuilt whenever a pin moves, and this file never
+changes. Stanford publishes no digest, so the check is on the shape
 of what came out — 25 dimensions plus the token is 26 fields on line one.
 
 `run.sbatch` still refuses to start without it, and so does the task:
@@ -216,9 +209,9 @@ holds the release's own pickle. `pyhighlights/tools/build_datasets.py
 `genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for the
 **original** pickle — what the published record still carries, what the
 reference implementation ships, and what a copy made before the conversion
-is. That file stores
-`structure_indexes`, the positions a highlight marks, where the library stores
-a vector; the proxy fills in that column and hands the rest to `ToyLoader`:
+is. That file stores `structure_indexes`, the positions a highlight marks,
+where the library stores a vector; the proxy fills in that column and hands
+the rest to `ToyLoader`:
 
 ```python
 from genspp2025.components.corpora import ReleasedToyLoader
