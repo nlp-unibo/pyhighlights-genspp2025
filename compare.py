@@ -78,7 +78,7 @@ def shown(value: tuple[float, float] | str, unit: str) -> str:
         return "-"
     mean, deviation = value
     if unit == "count":
-        return f"{mean:,.0f}" if not deviation else f"{mean:,.0f} +/- {deviation:,.0f}"
+        return f"{mean:,.0f}" if not deviation else f"{mean:,.0f} ± {deviation:,.0f}"
     if unit == "parameters":
         # A toy backbone is thousands and a transformer is hundreds of
         # millions, and neither reads in the other's unit. The threshold is
@@ -91,17 +91,17 @@ def shown(value: tuple[float, float] | str, unit: str) -> str:
 
         # A search settles on whatever candidate won, so a parameter count is
         # a spread across seeds like every other column here.
-        return sized(mean) if not deviation else f"{sized(mean)} +/- {sized(deviation)}"
+        return sized(mean) if not deviation else f"{sized(mean)} ± {sized(deviation)}"
     if unit == "milliseconds":
-        return f"{mean * 1e3:.1f} +/- {deviation * 1e3:.1f}"
+        return f"{mean * 1e3:.1f} ± {deviation * 1e3:.1f}"
     if unit == "mebibytes":
-        return f"{mean:,.0f} +/- {deviation:,.0f}"
+        return f"{mean:,.0f} ± {deviation:,.0f}"
     # Seconds, until an hour makes them unreadable.
     if mean >= 3600:
-        return f"{mean / 3600:.2f}h +/- {deviation / 3600:.2f}"
+        return f"{mean / 3600:.2f}h ± {deviation / 3600:.2f}"
     if mean >= 60:
-        return f"{mean / 60:.1f}m +/- {deviation / 60:.1f}"
-    return f"{mean:.2f}s +/- {deviation:.2f}"
+        return f"{mean / 60:.1f}m ± {deviation / 60:.1f}"
+    return f"{mean:.2f}s ± {deviation:.2f}"
 
 
 def costs(directory: Path, corpus: str) -> pd.DataFrame:

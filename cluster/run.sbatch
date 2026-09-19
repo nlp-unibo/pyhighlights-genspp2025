@@ -49,8 +49,8 @@ mkdir -p "$SCRATCH/cache" logs
 
 EXTRA=()
 if [ "$CORPUS" = "hatexplain" ]; then
-  # The 1.4 GB GloVe file, staged once by hand. The task refuses without it
-  # rather than training on a vocabulary of whatever the corpus happened to
+  # The 1.4 GB GloVe file, staged by `build.sbatch`. The task refuses without
+  # it rather than training on a vocabulary of whatever the corpus happened to
   # contain -- which is the defect pyhighlights 0.9.0's `requires_embeddings`
   # exists to make impossible.
   GLOVE="$SCRATCH/glove/glove.twitter.27B.25d.txt"
@@ -62,14 +62,14 @@ if [ "$CORPUS" = "hatexplain" ]; then
 fi
 
 # The pinned packages are in the image -- see `build.sbatch` and
-# `cluster/env.def`. `OMP_NUM_THREADS` is set here because Slurm gives the job
-# its cores, and torch sizing its pool to the whole node would oversubscribe
-# every one of them.
+# `cluster/env.def` -- so there is nothing to check for but the image itself.
 if [ ! -f env.sif ]; then
   echo "missing $PWD/env.sif -- run cluster/build.sbatch first" >&2
   exit 2
 fi
 
+# `OMP_NUM_THREADS` because Slurm gives the job its cores, and torch sizing
+# its pool to the whole node would oversubscribe every one of them.
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \

@@ -463,7 +463,7 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
     assert table.loc["genspp", "runtime/seed"].startswith("2.00h")
     assert table.loc["genspp", "runtime/model"].startswith("11.40s")
     assert table.loc["genspp", "inference/batch"].startswith("4.2")
-    assert table.loc["genspp", "memory/peak"] == "8,000 +/- 0"
+    assert table.loc["genspp", "memory/peak"] == "8,000 ± 0"
     assert table.loc["genspp", "parameters"] == "2.57M"
     assert table.loc["genspp", "trainable"] == "2.50M"
     assert table.loc["genspp", "frozen"] == "74.1k"
@@ -495,5 +495,5 @@ def test_a_parameter_count_keeps_the_spread_the_seeds_had():
     """
     import compare
 
-    assert compare.shown((2_574_148.0, 12_000.0), "parameters") == "2.57M +/- 12.0k"
+    assert compare.shown((2_574_148.0, 12_000.0), "parameters") == "2.57M ± 12.0k"
     assert compare.shown((999_990.0, 0.0), "parameters") == "1.00M"

@@ -35,39 +35,31 @@ step() {
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
 mkdir -p "$SCRATCH/cache"
 
-# Apptainer caches the layers it pulls under `$HOME/.apptainer` and assembles
-# the image in `/tmp`, and a home directory under quota fails the build after
-# the download rather than before it:
+# Apptainer caches the layers it fetches under `$HOME/.apptainer` by default,
+# and a home directory under quota fails the build after the download rather
+# than before it:
 #
 #   FATAL: While performing build: conveyor failed to get: write
 #   /home/<user>/.apptainer/cache/blob/oci-layout: disk quota exceeded
 #
-# The cache goes to scratch, which is where this account has room, and is kept
-# rather than cleared: a rebuild that changes only a pip floor reuses the base
-# image's layers instead of fetching two gigabytes again.
+# The cache goes to scratch, where this account has room, and is kept rather
+# than cleared: a rebuild that moves only a pin reuses the base image's layers
+# instead of fetching them again.
 export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
 mkdir -p "$APPTAINER_CACHEDIR"
 
-# The assembly directory is a different question, and scratch is the wrong
-# answer for it. Converting the layers to a SIF unpacks the whole image as
-# ordinary files and then squashes them back, which is tens of thousands of
-# small writes: on a parallel filesystem that step ran at 1.4 GB in two and a
-# half hours for a seven gigabyte image, with the process at one percent of a
-# core because it was waiting on the filesystem rather than working. The same
-# mount reports `nodev`, which apptainer warns about because the device nodes
-# it unpacks cannot be created there at all.
+# The image is assembled on the node's own disk, not on scratch. Assembly
+# unpacks the layers as ordinary files and squashes them back, tens of
+# thousands of small writes: on scratch that ran at 1.4 GB in two and a half
+# hours for a seven gigabyte image, the process at one percent of a core
+# because it was waiting on the filesystem. That mount also reports `nodev`,
+# so the device nodes cannot be unpacked there at all.
 #
-# So the assembly happens on the node's own disk, and scratch is the fallback
-# for a node whose local disk is too small to hold the unpacked image beside
-# the SIF. Slow is better than a build that runs out of room.
-#
-# Cleared first. A build that is cancelled -- by `scancel`, by a time limit,
-# by the registry -- leaves the unpacked image behind, nine gigabytes of it,
-# and nothing else ever removes it. The next build then measures the free
-# space with its own predecessor still occupying it, reads thirteen gigabytes
-# where the disk has twenty-two, and falls back to scratch for no reason.
-# Nothing here is worth keeping between jobs: the layer cache is on scratch
-# and this directory only ever holds one build's scratch space.
+# Scratch is the fallback for a node too small to hold the unpacked image
+# beside the SIF -- slow beats running out of room -- and the directory is
+# cleared first, because a cancelled build leaves nine gigabytes of unpacked
+# image behind and the next build would measure the free space around it.
+# Nothing here outlives a job: the layer cache is on scratch.
 LOCAL_TMP="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
 rm -rf "$LOCAL_TMP"
 mkdir -p "$LOCAL_TMP"
@@ -80,18 +72,15 @@ else
 fi
 mkdir -p "$APPTAINER_TMPDIR"
 
-# Built from `cluster/env.def`, which holds the base tag and the pins. A
-# definition file rather than a bare `apptainer pull` for two reasons: the
-# pinned packages go into the image itself instead of a virtualenv on scratch
-# that every job has to bind and point at, and a build writes the finished SIF
-# once where a cached pull writes it twice -- once into the cache and once to
-# the destination, both on a filesystem measured here at 11.6 MB/s.
+# Built from `cluster/env.def`, which holds the base tag and the pins, rather
+# than pulled: the pins end up in the image instead of in a virtualenv every
+# job has to find, and a build writes the finished SIF once where a cached
+# pull writes it twice, on a filesystem measured here at 11.6 MB/s.
 #
 # `--ignore-fakeroot-command` is not optional. The user is not in
-# `/etc/subuid`, so apptainer builds under a root-mapped namespace and wraps
-# `%post` in its own `fakeroot`, injecting a host `libfakeroot.so` built
-# against GLIBC 2.38. The base image is Ubuntu 22.04, which has 2.35, so
-# `%post` dies before its first line:
+# `/etc/subuid`, so apptainer wraps `%post` in its own `fakeroot` and injects
+# a host `libfakeroot.so` built against GLIBC 2.38 -- and the base image is
+# Ubuntu 22.04, which has 2.35, so `%post` dies before its first line:
 #
 #   /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
 #     (required by /.singularity.d/libs/libfakeroot.so)
@@ -99,16 +88,9 @@ mkdir -p "$APPTAINER_TMPDIR"
 # The flag drops that wrapper and leaves the namespace's own root mapping,
 # which is all `%post` needs now that it only runs pip.
 #
-# Retried, because the registry drops connections partway through the base
-# image:
-#
-#   error writing layer: stream error: stream ID 7; INTERNAL_ERROR;
-#   received from peer
-#
-# That is the registry resetting an HTTP/2 stream, not anything this job did,
-# and it fails the whole build after however much had already transferred.
-# Three attempts rather than one, because a job that dies on it costs a queue
-# wait as well as the download.
+# Three attempts, because the registry resets an HTTP/2 stream partway through
+# the base image -- `stream error: stream ID 7; INTERNAL_ERROR; received from
+# peer` -- and failing a queued job on someone else's reset is expensive.
 step "building env.sif from cluster/env.def"
 for attempt in 1 2 3; do
   if apptainer build --ignore-fakeroot-command --force env.sif cluster/env.def; then
@@ -164,7 +146,7 @@ PY
 
 # GloVe, for HateXplain. 1.4 GB, so it is fetched once here rather than by
 # five array jobs at the same time, and kept on scratch rather than in the
-# image: an image is rebuilt whenever a floor moves, and this file never
+# image: the image is rebuilt whenever a pin moves, and this file never
 # changes. The paper expects you to fetch it yourself, which is why the task
 # takes a path and nothing in the library downloads it.
 GLOVE_DIR="$SCRATCH/glove"
@@ -174,9 +156,11 @@ mkdir -p "$GLOVE_DIR"
 if [ -f "$GLOVE" ]; then
   echo "glove already staged at $GLOVE"
 else
-  # `-c` so an interrupted job resumes its download instead of starting the
-  # 1.4 GB again, and the archive is removed only once the member is out.
   step "fetching glove (1.4 GB)"
+  # `-c` so an interrupted job resumes instead of starting the 1.4 GB again,
+  # and the archive is removed only once the member is out. A dot is a
+  # megabyte and a line thirty-two of them: fifty lines rather than fifty
+  # thousand, which is as close to a progress bar as a log file gets.
   wget -c --progress=dot:giga \
     -O "$GLOVE_DIR/glove.twitter.27B.zip" \
     https://nlp.stanford.edu/data/glove.twitter.27B.zip
