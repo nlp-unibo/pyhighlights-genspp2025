@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=genspp
 #SBATCH --array=0-4
+#SBATCH --partition=l40s
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -11,6 +12,21 @@
 
 # No --chdir: the job runs in the directory it was submitted from, so submit
 # from the repository root.
+
+# The partition has to be named. The default is `sbuild`, which is the image
+# builder: eight cores, 32095 MB and no GPU, so a job asking for a GPU and
+# 32 GB is refused before it queues --
+#
+#   sbatch: error: Memory specification can not be satisfied
+#   sbatch: error: Batch job submission failed: Requested node configuration
+#   is not available
+#
+# -- and note that 32G is 32768 MB, which is 673 MB more than that node has
+# whether or not a GPU is wanted. `l40s` is the choice among the GPU
+# partitions because it has four nodes to the others' one, so five array
+# tasks spread rather than queue behind each other; every GPU partition here
+# is far larger than this study needs. Override it per submission with
+# `sbatch --partition=<name> cluster/run.sbatch ...`.
 
 # One job per model, five per corpus. The argument picks the corpus:
 #
