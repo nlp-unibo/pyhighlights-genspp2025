@@ -45,7 +45,7 @@ MODEL=${MODELS[${SLURM_ARRAY_TASK_ID:-0}]}
 # Override SCRATCH to point somewhere else; the default is this account's
 # scratch directory.
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
-mkdir -p "$SCRATCH/cache" logs
+mkdir -p "$SCRATCH/cache/pyhighlights" logs
 
 EXTRA=()
 if [ "$CORPUS" = "hatexplain" ]; then
@@ -68,12 +68,59 @@ if [ ! -f env.sif ]; then
   exit 2
 fi
 
+# A run writes on the node's own disk and the tree is copied up at the end.
+# This repository is checked out on `/scratch.hpc`, and the cluster's guidance
+# says why that matters: "problemi di latenza legati al IO sulla share di rete
+# /scratch.hpc". Measured on a build node, same URL and the same fifteen
+# seconds, a 16 kB-buffered write reached 41 kB/s there against 5.5 MB/s to
+# local disk. A training run is the worst possible shape for that -- a
+# checkpoint written every epoch of five hundred, per seed, per model -- so
+# `save_path` points at local disk and scratch is written once, at the end.
+#
+# One directory per job, because the guidance also warns that two jobs sharing
+# a node-local path clean up under each other. The copy runs on the way out
+# however the job ends, so a job that hits its time limit still leaves the
+# cells it finished; anything older than a day is a job that was killed
+# outright.
+WORK_ROOT="${TMPDIR:-/tmp}/${USER:-$(id -un)}-genspp"
+mkdir -p "$WORK_ROOT"
+find "$WORK_ROOT" -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf {} + 2>/dev/null || true
+WORK="$WORK_ROOT/${SLURM_JOB_ID:-$$}${SLURM_ARRAY_TASK_ID:+-$SLURM_ARRAY_TASK_ID}"
+mkdir -p "$WORK/results"
+
+collect() {
+  mkdir -p "$PWD/results"
+  cp -a "$WORK/results/." "$PWD/results/" && rm -rf "$WORK"
+}
+trap collect EXIT
+
+# The corpora come with the job rather than being read off scratch a record at
+# a time: `build.sbatch` stages them, and this copies that cache across in one
+# pass -- 47 MB of archives, against a run that would otherwise read them over
+# the network share.
+#
+# `PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
+# read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless that
+# variable says otherwise, and apptainer binds the host's home into the
+# container, so an unset variable puts corpora in a home directory that has a
+# quota and has already been filled once by caches.
+#
+# Not copied back. Five array jobs writing one cache is a race nothing here
+# arbitrates, and a corpus `build.sbatch` did not stage is one download per
+# job rather than one corrupted archive for all five.
+mkdir -p "$WORK/cache"
+if [ -d "$SCRATCH/cache/pyhighlights" ]; then
+  cp -a "$SCRATCH/cache/pyhighlights" "$WORK/cache/"
+fi
+
 # `OMP_NUM_THREADS` because Slurm gives the job its cores, and torch sizing
 # its pool to the whole node would oversubscribe every one of them.
 apptainer exec --nv \
-  --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
+  --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" --bind "$WORK:$WORK" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
   --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
-  --env XDG_CACHE_HOME="$SCRATCH/cache" \
-  env.sif python run.py "$CORPUS" --model "$MODEL" "${EXTRA[@]}" "$@"
+  --env PYHIGHLIGHTS_CACHE="$WORK/cache/pyhighlights" \
+  --env XDG_CACHE_HOME="$WORK/cache" \
+  env.sif python run.py "$CORPUS" --model "$MODEL" \
+  --results "$WORK/results" "${EXTRA[@]}" "$@"

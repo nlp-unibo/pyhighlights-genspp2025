@@ -49,6 +49,26 @@ the directory it was submitted from. Both stage into `$SCRATCH`, which
 defaults to `/scratch.hpc/$USER` and can be set to any other path before
 submitting.
 
+**Neither job does its writing there.** `/scratch.hpc` is a network share with
+known IO latency — the cluster's own guidance says so, and measured on a build
+node, same URL and the same fifteen seconds, a 16 kB-buffered write reached
+41 kB/s against 5.5 MB/s to local disk. A training run is the worst shape for
+that, a checkpoint per epoch per seed per model, so a run writes on the node's
+own disk and its results tree is copied up once when the job ends — however it
+ends, so a job that hits its time limit still leaves the cells it finished.
+One directory per job, because that guidance also warns that two jobs sharing
+a node-local path clean up under each other.
+
+The corpora travel with the job too. `build.sbatch` stages them under
+`$SCRATCH/cache/pyhighlights` and each run copies that across in one pass —
+47 MB of archives, rather than reading them over the share. The variable is
+`PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
+read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless told
+otherwise, and apptainer binds your home into the container, so leaving it
+unset puts corpora in the home directory that has a quota. The local copy is
+not written back — five array jobs writing one cache is a race nothing here
+arbitrates.
+
 ```bash
 mkdir -p logs
 sbatch cluster/build.sbatch                       # image, registry, corpus, GloVe
