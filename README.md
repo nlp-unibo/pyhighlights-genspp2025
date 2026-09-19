@@ -135,7 +135,9 @@ ordinary files and squashes them back, which is tens of thousands of small
 writes: on `/scratch.hpc` that step managed 1.4 GB of a 7 GB image in two and
 a half hours, with the process at one percent of a core because it was waiting
 on the filesystem. A node whose local disk holds less than 20 GB falls back to
-scratch and says so in the log.
+scratch and says so in the log — and the directory is cleared first, because
+a cancelled build leaves its nine gigabytes of unpacked image behind and the
+next one would measure the free space around it.
 
 The build is attempted up to three times. The registry drops connections
 partway through the base image — `stream error: stream ID 7; INTERNAL_ERROR;
