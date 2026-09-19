@@ -20,6 +20,15 @@
 
 set -euo pipefail
 
+# `sbatch cluster/build.sbatch --skip-glove` stops before the 1.4 GB GloVe
+# file. Only HateXplain reads it, so a Toy table is not worth waiting on a
+# slow mirror for -- and `build.sbatch` can be submitted again later to fetch
+# it, since everything above it is a no-op once the image exists.
+SKIP_GLOVE=
+if [ "${1:-}" = "--skip-glove" ]; then
+  SKIP_GLOVE=1
+fi
+
 # Where the job is, and how long it has been there. There are no progress bars
 # in this log: the output is a file rather than a terminal, so apptainer prints
 # no bar and `mksquashfs` prints nothing at all. Elapsed time per step is what
@@ -144,11 +153,28 @@ splits = Registry.from_key(TOY).load()
 print({name: len(frame) for name, frame in splits.items()})
 PY
 
+if [ -n "$SKIP_GLOVE" ]; then
+  step "built, without glove; Toy needs none, HateXplain will"
+  exit 0
+fi
+
 # GloVe, for HateXplain. 1.4 GB, so it is fetched once here rather than by
 # five array jobs at the same time, and kept on scratch rather than in the
 # image: the image is rebuilt whenever a pin moves, and this file never
 # changes. The paper expects you to fetch it yourself, which is why the task
 # takes a path and nothing in the library downloads it.
+#
+# The mirror first, and `nlp.stanford.edu` second, although Stanford is the
+# source the paper names: it has served this file here at 30 kB/s, which is
+# thirteen hours for the 1.4 GB. The mirror is Stanford's own upload to the
+# Hugging Face hub, behind a CDN. A falling-back order rather than a
+# speed-based switch because wget has no minimum-rate option: `--read-timeout`
+# fires when a host stops sending, not when it trickles, so a slow host holds
+# the job to its wall clock and the next URL is never reached.
+GLOVE_URLS=(
+  https://huggingface.co/stanfordnlp/glove/resolve/main/glove.twitter.27B.zip
+  https://nlp.stanford.edu/data/glove.twitter.27B.zip
+)
 GLOVE_DIR="$SCRATCH/glove"
 GLOVE="$GLOVE_DIR/glove.twitter.27B.25d.txt"
 mkdir -p "$GLOVE_DIR"
@@ -156,14 +182,28 @@ mkdir -p "$GLOVE_DIR"
 if [ -f "$GLOVE" ]; then
   echo "glove already staged at $GLOVE"
 else
-  step "fetching glove (1.4 GB)"
   # `-c` so an interrupted job resumes instead of starting the 1.4 GB again,
   # and the archive is removed only once the member is out. A dot is a
   # megabyte and a line thirty-two of them: fifty lines rather than fifty
   # thousand, which is as close to a progress bar as a log file gets.
-  wget -c --progress=dot:giga \
-    -O "$GLOVE_DIR/glove.twitter.27B.zip" \
-    https://nlp.stanford.edu/data/glove.twitter.27B.zip
+  #
+  # `--read-timeout` covers the other failure, a host that accepts the
+  # connection and then sends nothing: without it wget waits on that for the
+  # rest of the job rather than returning to try the next URL.
+  fetched=
+  for url in "${GLOVE_URLS[@]}"; do
+    step "fetching glove (1.4 GB) from $url"
+    if wget -c --progress=dot:giga --read-timeout=60 --tries=2 \
+      -O "$GLOVE_DIR/glove.twitter.27B.zip" "$url"; then
+      fetched=1
+      break
+    fi
+    step "that host did not finish it; trying the next"
+  done
+  if [ -z "$fetched" ]; then
+    echo "glove: no host finished the download; rerun to resume" >&2
+    exit 1
+  fi
   step "unzipping glove"
   unzip -o -j "$GLOVE_DIR/glove.twitter.27B.zip" glove.twitter.27B.25d.txt \
     -d "$GLOVE_DIR"

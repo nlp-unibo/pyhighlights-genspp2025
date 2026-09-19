@@ -147,7 +147,15 @@ conversion that is working from one that is hung. GloVe is the exception:
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
 than inside it: the image is rebuilt whenever a pin moves, and this file never
-changes. Stanford publishes no digest, so the check is on the shape
+changes. Toy needs none of it, so `sbatch cluster/build.sbatch --skip-glove`
+stops before it and a later submission picks it up — everything above it is a
+no-op once the image exists.
+
+It is fetched from Stanford's own upload to the Hugging Face hub before
+`nlp.stanford.edu`, which has served it here at 30 kB/s: thirteen hours for
+the 1.4 GB. The order is a fallback rather than a race, because `wget` has no
+minimum-rate option — `--read-timeout` fires on a host that stops sending,
+not on one that trickles. Stanford publishes no digest, so the check is on the shape
 of what came out — 25 dimensions plus the token is 26 fields on line one.
 
 `run.sbatch` still refuses to start without it, and so does the task:
