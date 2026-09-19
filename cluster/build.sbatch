@@ -42,7 +42,17 @@ step() {
 # Override SCRATCH to point somewhere else; the default is this account's
 # scratch directory.
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
-mkdir -p "$SCRATCH/cache"
+
+# Where the corpora are kept between jobs. `PYHIGHLIGHTS_CACHE` and not
+# `XDG_CACHE_HOME`, which the library does not read: it caches under
+# `Path.home() / ".cache" / "pyhighlights"` unless that variable says
+# otherwise, and apptainer binds the host's home into the container, so an
+# unset variable puts corpora in a home directory that has a quota and has
+# already been filled once by caches. `XDG_CACHE_HOME` is set as well, for
+# whatever else in the image respects it.
+export PYHIGHLIGHTS_CACHE="$SCRATCH/cache/pyhighlights"
+export XDG_CACHE_HOME="$SCRATCH/cache"
+mkdir -p "$PYHIGHLIGHTS_CACHE"
 
 # Apptainer caches the layers it fetches under `$HOME/.apptainer` by default,
 # and a home directory under quota fails the build after the download rather
@@ -140,7 +150,8 @@ apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
-  --env XDG_CACHE_HOME="$SCRATCH/cache" \
+  --env PYHIGHLIGHTS_CACHE="$PYHIGHLIGHTS_CACHE" \
+  --env XDG_CACHE_HOME="$XDG_CACHE_HOME" \
   env.sif python - <<'PY'
 from pathlib import Path
 

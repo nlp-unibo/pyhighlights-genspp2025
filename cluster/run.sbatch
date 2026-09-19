@@ -45,7 +45,7 @@ MODEL=${MODELS[${SLURM_ARRAY_TASK_ID:-0}]}
 # Override SCRATCH to point somewhere else; the default is this account's
 # scratch directory.
 SCRATCH=${SCRATCH:-/scratch.hpc/${USER:-$(id -un)}}
-mkdir -p "$SCRATCH/cache" logs
+mkdir -p "$SCRATCH/cache/pyhighlights" logs
 
 EXTRA=()
 if [ "$CORPUS" = "hatexplain" ]; then
@@ -94,6 +94,25 @@ collect() {
 }
 trap collect EXIT
 
+# The corpora come with the job rather than being read off scratch a record at
+# a time: `build.sbatch` stages them, and this copies that cache across in one
+# pass -- 47 MB of archives, against a run that would otherwise read them over
+# the network share.
+#
+# `PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
+# read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless that
+# variable says otherwise, and apptainer binds the host's home into the
+# container, so an unset variable puts corpora in a home directory that has a
+# quota and has already been filled once by caches.
+#
+# Not copied back. Five array jobs writing one cache is a race nothing here
+# arbitrates, and a corpus `build.sbatch` did not stage is one download per
+# job rather than one corrupted archive for all five.
+mkdir -p "$WORK/cache"
+if [ -d "$SCRATCH/cache/pyhighlights" ]; then
+  cp -a "$SCRATCH/cache/pyhighlights" "$WORK/cache/"
+fi
+
 # `OMP_NUM_THREADS` because Slurm gives the job its cores, and torch sizing
 # its pool to the whole node would oversubscribe every one of them.
 apptainer exec --nv \
@@ -101,6 +120,7 @@ apptainer exec --nv \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
   --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
-  --env XDG_CACHE_HOME="$SCRATCH/cache" \
+  --env PYHIGHLIGHTS_CACHE="$WORK/cache/pyhighlights" \
+  --env XDG_CACHE_HOME="$WORK/cache" \
   env.sif python run.py "$CORPUS" --model "$MODEL" \
   --results "$WORK/results" "${EXTRA[@]}" "$@"

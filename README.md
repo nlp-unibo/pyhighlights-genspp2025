@@ -59,6 +59,16 @@ ends, so a job that hits its time limit still leaves the cells it finished.
 One directory per job, because that guidance also warns that two jobs sharing
 a node-local path clean up under each other.
 
+The corpora travel with the job too. `build.sbatch` stages them under
+`$SCRATCH/cache/pyhighlights` and each run copies that across in one pass —
+47 MB of archives, rather than reading them over the share. The variable is
+`PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
+read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless told
+otherwise, and apptainer binds your home into the container, so leaving it
+unset puts corpora in the home directory that has a quota. The local copy is
+not written back — five array jobs writing one cache is a race nothing here
+arbitrates.
+
 ```bash
 mkdir -p logs
 sbatch cluster/build.sbatch                       # image, registry, corpus, GloVe
