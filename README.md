@@ -101,6 +101,8 @@ The search is a population of 50 over 100 generations at a selection rate of
 That is 5050 candidates trained per seed.
 Nothing resumes and `results.json` is written once after the last seed, so a
 cell killed on its fifth loses all five.
+`--time=24:00:00` is the cluster's ceiling, and a GenSPP cell has to finish
+inside it.
 
 ## Results
 
