@@ -1,17 +1,28 @@
-# genspp2025
+# Interlocking-free Selective Rationalization Through Genetic-based Learning, ACL 2025
 
-A reproduction of Ruggeri and Signorelli, 2025, *Interlocking-free Selective
-Rationalization Through Genetic-based Learning*, ACL 2025, built on
+A reproduction of Ruggeri and Signorelli, 2025, built on
 [pyhighlights](https://github.com/nlp-unibo/pyhighlights).
 
 It runs two corpora, a synthetic one and HateXplain, against the five
-architectures that paper compares: FR, MGR, MCD, G-RAT and GenSPP.
+architectures that paper compares.
 A **cell** is one of those models on one corpus over the paper's five seeds,
 and it is the unit everything here counts in.
 
 [Paper](https://aclanthology.org/2025.acl-long.59/) ·
 [Reference implementation](https://github.com/nlp-unibo/gen-spp) ·
 [Library](https://github.com/nlp-unibo/pyhighlights)
+
+## Architectures
+
+Every one is the library's, registered here with the paper's values.
+
+| Model | Reference |
+|---|---|
+| **FR** | Liu, Wang, Wang, Li, Yue and Zhang, 2022, *FR: Folded Rationalization with a Unified Encoder*, NeurIPS 2022 |
+| **MGR** | Liu, Wang, Wang, Li, Li, Zhang and Qiu, 2023, *MGR: Multi-Generator Based Rationalization*, ACL 2023, pages 12771-12787 |
+| **MCD** | Liu, Wang, Wang, Li, Deng, Zhang and Qiu, 2023, *D-Separation for Causal Self-Explanation*, NeurIPS 2023 |
+| **G-RAT** | Hu and Yu, 2024, *Learning Robust Rationales for Model Explainability: A Guidance-Based Approach*, AAAI 2024, pages 18243-18251 |
+| **GenSPP** | This paper |
 
 ## Layout
 
@@ -91,6 +102,21 @@ Nothing resumes and `results.json` is written once after the last seed, so a
 cell killed on its fifth loses all five.
 
 ## Results
+
+### Reproduced against published
+
+Not filled yet.
+The experiments are still running, and this section holds the published
+numbers beside the reproduced ones once all ten cells have finished.
+It reports Table 1, which is macro F1, token-level highlight F1, selection
+rate and selection size, for each of the five models on each corpus.
+Until then the numbers this repository stands behind are the published ones in
+`published.py`.
+
+`python compare.py --results results` produces it, since its first table per
+corpus is this comparison.
+
+### What `compare.py` prints
 
 `compare.py` prints two tables per corpus.
 The first is the paper's numbers beside the run's.
