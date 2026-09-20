@@ -9,7 +9,7 @@
 search of its own, since a search reads no trainer argument.
 
 The registry is built over this package with the library beside it, so an edit
-here runs without reinstalling anything -- which is why the container installs
+here runs without reinstalling anything, which is why the container installs
 `pyhighlights` and not this repository.
 
 `--smoke` writes under `results/smoke/` rather than beside the real runs.
@@ -62,7 +62,7 @@ def smoke_search(corpus: str):
     """The search a smoke run uses instead of the paper's.
 
     ``--smoke`` bounds a baseline with ``trainer_args``, which Lightning
-    reads. The search reads none of it -- it builds a trainer per candidate --
+    reads. The search reads none of it, since it builds a trainer per candidate,
     so the GenSPP cell ran its fifty candidates over a hundred generations
     under a flag that promises minutes. The key below is two candidates and one
     generation, and every other setting is the paper's.

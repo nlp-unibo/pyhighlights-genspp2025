@@ -10,9 +10,9 @@
 # No --chdir: the job runs in the directory it was submitted from, so submit
 # from the repository root.
 
-# The image is built on sbuild, never on a login node -- `apptainer` exists
-# only on the compute nodes, so nothing containerized runs from a login shell
-# at all (`apptainer: command not found`). This job also builds the registry
+# The image is built on sbuild, never on a login node. `apptainer` exists only
+# on the compute nodes, so nothing containerized runs from a login shell at
+# all (`apptainer: command not found`). This job also builds the registry
 # and fetches the toy corpus, because both need the image.
 #
 #   mkdir -p logs && sbatch cluster/build.sbatch
@@ -22,7 +22,7 @@ set -euo pipefail
 
 # `sbatch cluster/build.sbatch --skip-glove` stops before the 1.4 GB GloVe
 # file. Only HateXplain reads it, so a Toy table is not worth waiting on a
-# slow mirror for -- and `build.sbatch` can be submitted again later to fetch
+# slow mirror for, and `build.sbatch` can be submitted again later to fetch
 # it, since everything above it is a no-op once the image exists.
 SKIP_GLOVE=
 if [ "${1:-}" = "--skip-glove" ]; then
@@ -32,7 +32,7 @@ fi
 # Where the job is, and how long it has been there. There are no progress bars
 # in this log: the output is a file rather than a terminal, so apptainer prints
 # no bar and `mksquashfs` prints nothing at all. Elapsed time per step is what
-# is left, and it is what a second run is estimated from -- a build that is
+# is left, and it is what a second run is estimated from: a build that is
 # twenty minutes into the conversion reads as working rather than as hung.
 # `SECONDS` is the shell's own counter, started when the job did.
 step() {
@@ -75,7 +75,7 @@ mkdir -p "$APPTAINER_CACHEDIR"
 # so the device nodes cannot be unpacked there at all.
 #
 # Scratch is the fallback for a node too small to hold the unpacked image
-# beside the SIF -- slow beats running out of room.
+# beside the SIF, where slow beats running out of room.
 #
 # One directory per job, removed when the job ends however it ends. The
 # cluster's own guidance warns that two jobs sharing a node-local path will
@@ -96,7 +96,7 @@ if [ "${AVAILABLE:-0}" -ge 20 ]; then
 else
   echo "local disk has ${AVAILABLE:-0}G, assembling on scratch instead (slow)" >&2
   # Per job here too. This is the branch that unpacks nine gigabytes onto the
-  # share, and a killed job used to leave them there -- which is how the
+  # share, and a killed job used to leave them there, which is how the
   # quota that stopped the first build filled up.
   export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp/${SLURM_JOB_ID:-$$}"
 fi
@@ -110,8 +110,8 @@ trap 'rm -rf "$LOCAL_TMP" "$APPTAINER_TMPDIR"' EXIT
 #
 # `--ignore-fakeroot-command` is not optional. The user is not in
 # `/etc/subuid`, so apptainer wraps `%post` in its own `fakeroot` and injects
-# a host `libfakeroot.so` built against GLIBC 2.38 -- and the base image is
-# Ubuntu 22.04, which has 2.35, so `%post` dies before its first line:
+# a host `libfakeroot.so` built against GLIBC 2.38. The base image is Ubuntu
+# 22.04, which has 2.35, so `%post` dies before its first line:
 #
 #   /bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
 #     (required by /.singularity.d/libs/libfakeroot.so)
@@ -120,8 +120,8 @@ trap 'rm -rf "$LOCAL_TMP" "$APPTAINER_TMPDIR"' EXIT
 # which is all `%post` needs now that it only runs pip.
 #
 # Three attempts, because the registry resets an HTTP/2 stream partway through
-# the base image -- `stream error: stream ID 7; INTERNAL_ERROR; received from
-# peer` -- and failing a queued job on someone else's reset is expensive.
+# the base image (`stream error: stream ID 7; INTERNAL_ERROR; received from
+# peer`), and failing a queued job on someone else's reset is expensive.
 step "building env.sif from cluster/env.def"
 for attempt in 1 2 3; do
   if apptainer build --ignore-fakeroot-command --force env.sif cluster/env.def; then
@@ -210,7 +210,7 @@ else
   # `curl` writing its 16 kB buffers reached 41 kB/s there against 5.5 MB/s to
   # local disk over the same seconds and the same URL, while `dd bs=1M` on the
   # same filesystem reached 11.6 MB/s. So the download is not what should
-  # touch scratch -- the finished file is, once, in megabyte blocks.
+  # touch scratch. The finished file is, once, in megabyte blocks.
   LOCAL_GLOVE="$LOCAL_TMP/glove"
   mkdir -p "$LOCAL_GLOVE"
   # A part-downloaded archive from when this ran on scratch, and a half-copied

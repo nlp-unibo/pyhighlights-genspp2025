@@ -1,7 +1,7 @@
 """The numbers this reproduction is trying to land on.
 
 Transcribed from Ruggeri and Signorelli, 2025, *Interlocking-free Selective
-Rationalization Through Genetic-based Learning*, ACL 2025, Tables 1 and 2 --
+Rationalization Through Genetic-based Learning*, ACL 2025, Tables 1 and 2,
 <https://aclanthology.org/2025.acl-long.59/>.
 
 Every entry is ``(mean, std)`` over the paper's five seeds, in the paper's own
@@ -58,7 +58,7 @@ TABLE_1: Dict[str, Dict[str, Row]] = {
 #: skew rows need a selector pre-trained to select the first token and then
 #: injected into the initial population, and ``GenSPPTrainer`` builds every
 #: founder at random with no way to seed one. ``genspp-g150`` is the exception
-#: -- it is ``n_generations=150`` and nothing else, so it can be run today.
+#: It is ``n_generations=150`` and nothing else, so it can be run today.
 TABLE_2: Dict[str, Dict[str, Row]] = {
     "toy": {
         "fr": _row((99.85, 0.11), (58.91, 3.18), (14.57, 0.12), (2.91, 0.02)),

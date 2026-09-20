@@ -7,7 +7,7 @@ Rationalization Through Genetic-based Learning*, ACL 2025, built on
 - Paper: <https://aclanthology.org/2025.acl-long.59/>
 - Reference implementation: <https://github.com/nlp-unibo/gen-spp>
 
-Two corpora — a synthetic one and HateXplain — against FR, MGR, MCD, G-RAT and
+Two corpora, a synthetic one and HateXplain, against FR, MGR, MCD, G-RAT and
 GenSPP. **This repository is configuration.** Every component it names is the
 library's; what lives here is the paper's experimental design, the numbers it
 published, and what it takes to run them on a cluster.
@@ -37,10 +37,11 @@ uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
 `--smoke` bounds a baseline with `trainer_args`, which is what Lightning
-reads. A search reads none of it — it builds a trainer per candidate — so the
-GenSPP cell takes a search of its own instead: two candidates, one generation,
-every other setting the paper's. Without it that cell ran the full fifty
-candidates over a hundred generations under a flag that promises minutes.
+reads. A search reads none of it, since it builds a trainer per candidate, so
+the GenSPP cell takes a search of its own instead: two candidates, one
+generation, every other setting the paper's. Without it that cell ran the full
+fifty candidates over a hundred generations under a flag that promises
+minutes.
 
 ## On the cluster
 
@@ -50,11 +51,11 @@ defaults to `/scratch.hpc/$USER` and can be set to any other path before
 submitting.
 
 **Neither job does its writing there.** `/scratch.hpc` is a network share with
-known IO latency — the cluster's own guidance says so, and measured on a build
+known IO latency. The cluster's own guidance says so, and measured on a build
 node, same URL and the same fifteen seconds, a 16 kB-buffered write reached
 41 kB/s against 5.5 MB/s to local disk. A training run is the worst shape for
 that, a checkpoint per epoch per seed per model, so a run writes on the node's
-own disk and its results tree is copied up once when the job ends — however it
+own disk and its results tree is copied up once when the job ends, however it
 ends, so a job that hits its time limit still leaves the cells it finished.
 One directory per job, because that guidance also warns that two jobs sharing
 a node-local path clean up under each other.
@@ -67,7 +68,7 @@ each of its five jobs fetches its own thirteen megabytes. The variable is
 read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless told
 otherwise, and apptainer binds your home into the container, so leaving it
 unset puts corpora in the home directory that has a quota. The local copy is
-not written back — five array jobs writing one cache is a race nothing here
+not written back: five array jobs writing one cache is a race nothing here
 arbitrates.
 
 ```bash
@@ -80,16 +81,16 @@ python compare.py --results results
 ```
 
 `run.sbatch` names `--partition=l40s`; the cluster's default is `sbuild`, the
-image builder, which has no GPU and 32095 MB — less than the 32768 MB a
+image builder, which has no GPU and 32095 MB, less than the 32768 MB a
 `--mem=32G` job asks for, so a submission there is refused outright. `l40s`
 has four nodes where the other GPU partitions have one, so five array tasks
 spread rather than queue behind one another. Override with `sbatch
 --partition=<name> cluster/run.sbatch ...`.
 
 One job per model, five per corpus. From the paper's appendix, a seed takes
-~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain
-— so GenSPP is hours where a baseline is minutes, and splitting per model
-keeps a table off the slowest cell's critical path.
+~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain.
+So GenSPP is hours where a baseline is minutes, and splitting per model keeps
+a table off the slowest cell's critical path.
 
 **Budget three days for the GenSPP cell.** The search is the paper's budget: a
 population of 50 over 100 generations at a selection rate of 0.5 trains 5050
@@ -111,18 +112,18 @@ candidates of the toy search:
 | eight threads | 832 | 1.17 |
 | eight processes | 293 | 0.41 |
 
-That machine is not this one, and the cell has not yet been timed on the
-cluster's eight cores, so the three-day budget stands until a run replaces it.
+That machine is not this one. The cell has not yet been timed on the cluster's
+eight cores, so the three-day budget stands until a run replaces it.
 
 ### The cost table
 
 `compare.py` prints a second table per corpus: runtime, inference time, memory
 and parameters, from the `cost_` columns every seed writes. The paper reports
-none of it, so there is no published half — it is filled by running the
+none of it, so there is no published half: it is filled by running the
 experiments.
 
 ```
-=== toy — cost ===
+=== toy: cost ===
  model runtime/model runtime/seed inference/batch inference/pass memory/peak parameters trainable frozen models trained at once
     fr  0.45s ± 0.00 0.45s ± 0.00       4.1 ± 0.0   0.17s ± 0.00     888 ± 0       2.3k      1.7k    600              1       1
    mcd  0.57s ± 0.00 0.57s ± 0.00       5.9 ± 0.0   0.23s ± 0.00     891 ± 0       4.6k      3.4k   1.2k              1       1
@@ -130,30 +131,30 @@ genspp  2.27s ± 0.00 2.27s ± 0.00       2.6 ± 0.0   0.13s ± 0.00     898 ± 
 ```
 
 **`runtime/model` is the column to compare rows on.** A baseline trains one
-model per seed; GenSPP trains its founders plus every generation's children,
-several at a time, and reports the winner — so `runtime/seed` would say a
+model per seed. GenSPP trains its founders plus every generation's children,
+several at a time, and reports the winner. So `runtime/seed` would say a
 search is as cheap as the machine that ran it. The per-model figure is
 `runtime × at-once / models-trained`, which for a baseline is its own wall
 clock. `inference/batch` is in milliseconds.
 
-**`memory/peak` is a ceiling, not a share.** It is the process high-water mark
-for the whole seed, and a search scores its candidates on threads of one
-process, so there is no per-model memory to divide out: most of the peak is
-resident before the first candidate exists. Read it as what a machine has to
-have, not as what a model uses.
+**`memory/peak` is a ceiling, not a share.** It is a high-water mark for the
+whole seed. Since 0.13.0 it is the larger of this process and the largest
+single worker that was reaped, because the candidates are no longer in this
+process. It is not the sum of the workers, which would count a forked page
+once per worker that never wrote to it. There is no per-model memory to divide
+out either, as most of the peak is resident before the first candidate exists.
+Read it as what a machine has to have, not as what a model uses.
 
 The parameter counts are of the model as it was scored. The toy backbone's
-one-hot table is frozen by construction, which is why `frozen` is never zero,
-and GenSPP's generator is frozen too — the search settled it and descent never
-moved it, so `trainable` is the predictor alone. A cell reads `-` where a model
-has not been run or the tree predates the library reporting costs.
+one-hot table is frozen by construction, which is why `frozen` is never zero.
+GenSPP's generator is frozen too. The search settled it and descent never
+moved it, so `trainable` is the predictor alone. A cell reads `-` where
+a model has not been run or the tree predates the library reporting costs.
 
 A search scores eight candidates at once, one per worker, which is the
-released implementation's pool and the job's `--cpus-per-task=8`. It is worth
-less than eight times: a candidate is small, so most of its cost is building a
-Lightning trainer and stepping it from Python. Eight candidates of the Toy
-search, measured on a 24-core machine — 14.1 s on one worker, 10.0 s on eight,
-7.4 s on eight with torch held to a thread each.
+released implementation's pool and the job's `--cpus-per-task=8`. Since
+pyhighlights 0.13.0 a worker is a process rather than a thread, and the
+measured return on the eight is in the table above.
 
 ### What `build.sbatch` stages
 
@@ -181,7 +182,7 @@ own disk**, because assembly unpacks the whole image as ordinary files and
 squashes them back: on `/scratch.hpc` that managed 1.4 GB of a 7 GB image in
 two and a half hours, the process at one percent of a core waiting on the
 filesystem. A node with less than 20 GB free falls back to scratch and says
-so, and the directory is cleared first — a cancelled build leaves nine
+so, and the directory is cleared first: a cancelled build leaves nine
 gigabytes of unpacked image behind, and the next one would measure the free
 space around it.
 
@@ -190,17 +191,17 @@ partway through the base image (`stream error: stream ID 7; INTERNAL_ERROR;
 received from peer`).
 
 Each step logs the elapsed time since the job started, as `[+12:34]`. There
-are no progress bars — the output is a file, so apptainer prints no bar and
-`mksquashfs` prints nothing at all — and the stamps are what tells a
-conversion that is working from one that is hung. GloVe is the exception:
+are no progress bars. The output is a file, so apptainer prints no bar and
+`mksquashfs` prints nothing at all. The stamps are what tells a conversion
+that is working from one that is hung. GloVe is the exception:
 `wget` dots it, a megabyte a dot and thirty-two to a line.
 
 **GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
 than by five array jobs at the same time, and kept beside the image rather
 than inside it: the image is rebuilt whenever a pin moves, and this file never
 changes. Toy needs none of it, so `sbatch cluster/build.sbatch --skip-glove`
-stops before it and a later submission picks it up — everything above it is a
-no-op once the image exists.
+stops before it and a later submission picks it up, since everything above it
+is a no-op once the image exists.
 
 It is fetched from Stanford's own upload to the Hugging Face hub before
 `nlp.stanford.edu`, and the order is a fallback rather than a race: `wget` has
@@ -212,9 +213,10 @@ node's own disk and copied across in one pass, because scratch collapses under
 small writes. Measured on a build node, same URL and same fifteen seconds:
 `curl` writing its 16 kB buffers reached 41 kB/s to `/scratch.hpc` against
 5.5 MB/s to `/tmp`, while `dd bs=1M` on that same filesystem reached
-11.6 MB/s. It is a fault worth reporting rather than only coding around —
-every run writes its results there too. Stanford publishes no digest, so the check is on the shape
-of what came out — 25 dimensions plus the token is 26 fields on line one.
+11.6 MB/s. It is a fault worth reporting rather than only coding around, since
+every run writes its results there too. Stanford publishes no digest, so the
+check is on the shape of what came out: 25 dimensions plus the token is 26
+fields on line one.
 
 `run.sbatch` still refuses to start without it, and so does the task:
 `requires_embeddings` exists because the registered HateXplain task once ran
@@ -229,7 +231,7 @@ node that may have no outbound network.
 ## What is reproducible, and what is not
 
 **Table 1 is.** All five models on both corpora, the paper's five seeds
-`[2023, 15451, 1337, 2001, 2080]`, and the four columns it reports — macro F1,
+`[2023, 15451, 1337, 2001, 2080]`, and the four columns it reports: macro F1,
 token-level highlight F1, selection rate and selection size.
 
 **Table 2 is not, except one row.** The skew experiment needs a selector
@@ -267,13 +269,13 @@ columns, converted when the artifact is built, so nothing converts it on the
 way in.
 
 It is [10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019),
-`pyhighlights-genspp-toy-v2.zip`, the second version of the record — the first
+`pyhighlights-genspp-toy-v2.zip`, the second version of the record. The first
 holds the release's own pickle. `pyhighlights/tools/build_datasets.py
 --skip-r2a` reproduces the published bytes from that pickle, and
 `genspp2025/configurations/toy/datasets.py` pins their digest.
 
 `genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for the
-**original** pickle — what the published record still carries, what the
+**original** pickle: what the published record still carries, what the
 reference implementation ships, and what a copy made before the conversion
 is. That file stores `structure_indexes`, the positions a highlight marks,
 where the library stores a vector; the proxy fills in that column and hands
@@ -286,5 +288,5 @@ splits = ReleasedToyLoader(url="toy_dataset.pkl").load()
 ```
 
 Nothing registers it. A test pins that it and a plain `ToyLoader` over the
-converted file return the same rows — otherwise converting the artifact
-changed the corpus rather than its serialisation.
+converted file return the same rows. Otherwise converting the artifact changed
+the corpus rather than its serialisation.

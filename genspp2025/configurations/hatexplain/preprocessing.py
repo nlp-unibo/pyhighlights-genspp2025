@@ -66,7 +66,7 @@ class AggregatorConfig(Configuration):
     component="pyhighlights.components.preprocessors.Pipeline",
 )
 class HateXplainPipelineConfig(PipelineConfig):
-    """Filter, fold, then reduce -- in that order."""
+    """Filter, fold, then reduce, in that order."""
 
     steps: List[RegistrationKey[Preprocessor]] = Param(
         [HATEXPLAIN_LENGTH_FILTER, HATEXPLAIN_LABEL_MAPPER, HATEXPLAIN_AGGREGATOR]

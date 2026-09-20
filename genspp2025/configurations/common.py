@@ -58,7 +58,7 @@ class PaperTaskConfig(Configuration):
     #: The corpus, as distributed. What the paper does to it is
     #: ``preprocessor``'s business.
     loader: RegistrationKey[HighlightLoader] = Param(None)
-    #: The architecture under test -- the one thing a row of the paper's table
+    #: The architecture under test, the one thing a row of the paper's table
     #: varies.
     model: RegistrationKey[Model] = Param(None)
     #: Filtering, label folding and vote aggregation. ``None`` for a corpus

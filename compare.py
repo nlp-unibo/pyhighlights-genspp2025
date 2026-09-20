@@ -6,12 +6,12 @@ Usage::
     python compare.py --results results            # both corpora
 
 Two tables per corpus. **Table 1** is the paper's, measured beside published.
-**Cost** is what those numbers took to produce -- runtime, inference, memory
-in mebibytes, parameters trainable and frozen -- which the paper does not
+**Cost** is what those numbers took to produce: runtime, inference, memory
+in mebibytes, parameters trainable and frozen, none of which the paper
 report and which is the other axis a reader compares a rationalizer on. It has
 no published half; it is filled by running the experiments.
 
-The library already turns a results tree into a table --
+The library already turns a results tree into a table:
 :class:`pyhighlights.components.analyzers.MetricsAnalyzer` does the walking,
 the per-seed aggregation and the ``mean ± std``. All this adds is the other
 half of each row and the distance between them.
@@ -52,7 +52,7 @@ MODELS = ("fr", "mgr", "mcd", "grat", "genspp")
 
 #: The cost table: the library's column name, and how to print it. Runtimes
 #: are per model trained rather than per seed, which is what makes a search
-#: comparable to a model trained once -- see `cost_runtime_per_run_s` in the
+#: comparable to a model trained once. See `cost_runtime_per_run_s` in the
 #: library. Nothing is published to set these beside.
 COSTS = {
     "runtime/model": ("runtime_per_run_s", "seconds"),
@@ -139,8 +139,8 @@ def analyzed(directory: Path, split: str, metrics: tuple[str, ...]) -> pd.DataFr
 def rows_of(directory: Path, corpus: str, split: str, metrics) -> pd.DataFrame:
     """The runs of one corpus, or an empty frame where there are none.
 
-    A results tree with no ``results.json`` in it -- a directory made by hand,
-    a batch of jobs that all failed -- analyzes to a frame with no columns at
+    A results tree with no ``results.json`` in it, a directory made by hand or
+    a batch of jobs that all failed, analyzes to a frame with no columns at
     all, which has no ``task`` to filter on.
     """
     frame = analyzed(directory, split, tuple(metrics))
@@ -192,7 +192,7 @@ def main() -> None:
 
     for corpus in [arguments.corpus] if arguments.corpus else ("toy", "hatexplain"):
         frame = compare(arguments.results, corpus)
-        print(f"\n=== {corpus} — Table 1 ===")
+        print(f"\n=== {corpus}: Table 1 ===")
         for column in COLUMNS:
             print(f"\n{column}")
             table = frame[
@@ -201,7 +201,7 @@ def main() -> None:
             table.columns = ["model", "measured", "published", "d"]
             print(table.to_string(index=False))
 
-        print(f"\n=== {corpus} — cost ===")
+        print(f"\n=== {corpus}: cost ===")
         print(costs(arguments.results, corpus).to_string(index=False))
 
 

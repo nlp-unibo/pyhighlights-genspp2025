@@ -1,7 +1,7 @@
 """Reading the corpus the paper released, in the schema it released it in.
 
-The released ``toy_dataset.pkl`` stores ``structure_indexes`` -- the positions
-a highlight marks -- where pyhighlights stores a ``highlights`` vector, and it
+The released ``toy_dataset.pkl`` stores ``structure_indexes``, the positions
+a highlight marks, where pyhighlights stores a ``highlights`` vector, and it
 stores no ``tokens`` because its tokens are the characters of its ``text``.
 That is a difference in serialisation rather than in what the corpus is, so it
 is a conversion rather than a loader of its own:
@@ -12,8 +12,8 @@ the file predates.
 **Kept although the published artifact no longer needs it.** The Zenodo record
 holds the corpus already converted, so the reproduction's own configuration
 reads it with a plain ``ToyLoader``. This stays for anyone holding the
-*original* pickle -- from the reference implementation, or from a copy made
-before the record was converted -- who would otherwise have nothing to read it
+*original* pickle, from the reference implementation or from a copy made
+before the record was converted, who would otherwise have nothing to read it
 with::
 
     from genspp2025.components.corpora import ReleasedToyLoader
