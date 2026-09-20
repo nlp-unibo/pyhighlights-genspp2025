@@ -91,20 +91,28 @@ One job per model, five per corpus. From the paper's appendix, a seed takes
 — so GenSPP is hours where a baseline is minutes, and splitting per model
 keeps a table off the slowest cell's critical path.
 
-**Budget three days for the GenSPP cell.** Measured here it is 4.5 hours a
-seed on Toy rather than the appendix's 36 minutes — 22 hours for its five,
-against 40 minutes for a whole baseline cell. The search is the paper's
-budget: a population of 50 over 100 generations at a selection rate of 0.5
-trains 5050 candidates per seed. Nothing resumes and `results.json` is
-written once after the last seed, so a cell killed on its fifth loses all
-five; `--time` is the partition's own limit for that reason.
+**Budget three days for the GenSPP cell.** The search is the paper's budget: a
+population of 50 over 100 generations at a selection rate of 0.5 trains 5050
+candidates per seed. Nothing resumes and `results.json` is written once after
+the last seed, so a cell killed on its fifth loses all five, and `--time` is
+the partition's own limit for that reason.
 
-The search scores eight candidates at once but buys about 1.4× for it, not
-8×. A candidate is a small GRU, so its cost is Lightning stepping from
-Python, and the pool is Python threads — the GIL is the limit, not the cores.
-A running search measured 78 threads at 240% of a possible 800%. So the
-GenSPP cell runs torch at one thread per candidate rather than eight: 14.1 s
-on one worker, 10.0 s on eight, 7.4 s on eight held to a thread each.
+The cell was 4.5 hours a seed on Toy under pyhighlights 0.12.0, against the
+appendix's 36 minutes, because the search scored its eight candidates on
+Python threads and the interpreter lock rather than the cores set the pace. A
+running search measured 78 threads at 240% of a possible 800%. Since 0.13.0
+the candidates are scored in worker processes instead, each held to one torch
+thread, which the library measured on a 24-core machine over sixteen
+candidates of the toy search:
+
+| workers | ms per candidate | hours per seed at 5050 |
+|---|---|---|
+| sequential | 1442 | 2.02 |
+| eight threads | 832 | 1.17 |
+| eight processes | 293 | 0.41 |
+
+That machine is not this one, and the cell has not yet been timed on the
+cluster's eight cores, so the three-day budget stands until a run replaces it.
 
 ### The cost table
 

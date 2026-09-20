@@ -141,26 +141,19 @@ fi
 # `OMP_NUM_THREADS` because Slurm gives the job its cores, and torch sizing
 # its pool to the whole node would oversubscribe every one of them.
 #
-# One thread for GenSPP, because its parallelism is already spent: the search
-# scores eight candidates at once on a `ThreadPool`, and eight workers each
-# taking eight torch threads is sixty-four threads over the job's eight cores.
-# Measured on a running search -- 78 threads, and 240% of a possible 800%. The
-# cores are not the limit there and adding threads does not make them one: a
-# candidate is a small GRU, so its cost is Lightning stepping from Python,
-# which holds the GIL. That is also why the search buys 1.4x rather than 8x --
-# eight candidates of the toy search took 14.1 s on one worker and 10.0 s on
-# eight, and 7.4 s on eight with torch held to a thread each, which is this
-# setting.
-THREADS="${SLURM_CPUS_PER_TASK:-8}"
-if [ "$MODEL" = "genspp" ]; then
-  THREADS=1
-fi
+# GenSPP needs no exception to this since pyhighlights 0.13.0, which scores a
+# search's candidates in worker processes and holds each worker to one torch
+# thread itself, so eight workers are eight threads rather than sixty-four.
+# Before it the workers were Python threads and the interpreter lock was the
+# limit rather than the cores, measured on a running search at 78 threads and
+# 240% of a possible 800%, and this job set one thread per candidate to
+# compensate.
 
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" --bind "$WORK:$WORK" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
-  --env OMP_NUM_THREADS="$THREADS" \
+  --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
   --env PYHIGHLIGHTS_CACHE="$WORK/cache/pyhighlights" \
   --env XDG_CACHE_HOME="$WORK/cache" \
   env.sif python run.py "$CORPUS" --model "$MODEL" \
