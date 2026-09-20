@@ -6,7 +6,7 @@ and spends its time on context switches: the suite measured 15.8s serial and
 102s across ``-n auto`` before this, which is the opposite of the point.
 
 One thread per worker, since the work is already parallel at the test level.
-Serial runs are left alone -- there is nothing to contend with, and a single
+Serial runs are left alone, since there is nothing to contend with and a single
 test of a real model should still use the machine.
 """
 

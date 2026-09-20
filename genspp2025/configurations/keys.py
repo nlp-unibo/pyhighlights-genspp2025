@@ -1,7 +1,7 @@
 """Keys the GenSPP reproduction is addressed by.
 
-Its own namespace, so the paper's HateXplain -- filtered to short posts, folded
-to two classes -- never stands in for the corpus as distributed.
+Its own namespace, so the paper's HateXplain, filtered to short posts and
+folded to two classes, never stands in for the corpus as distributed.
 """
 
 from cinnamon.registry import RegistrationKey
@@ -12,12 +12,15 @@ NAMESPACE = "genspp2025"
 SEEDS = [2023, 15451, 1337, 2001, 2080]
 
 #: Candidates a genetic search scores at once, one per worker, as the release's
-#: own CPU thread pool does and as ``cluster/run.sbatch`` allocates
-#: (``--cpus-per-task=8``). It buys less than eight times the speed: a
-#: candidate is small, so most of its cost is building a Lightning trainer and
-#: stepping it from Python. Measured on eight candidates of the toy search --
-#: one worker 14.1 s, eight workers 10.0 s, and 7.4 s with torch held to one
-#: thread each, which is the machine, not the setting.
+#: own pool does and as ``cluster/run.sbatch`` allocates
+#: (``--cpus-per-task=8``). Every entry is a CPU device, which is what lets
+#: pyhighlights 0.13.0 score them in forked worker processes: a CUDA context
+#: cannot be inherited across a fork, so one CUDA device here would put the
+#: search back on threads. It buys less than eight times the speed, since a
+#: candidate is small and most of its cost is the training loop stepping from
+#: Python. The library measured sixteen candidates of the toy search on a
+#: 24-core machine at 1442 ms a candidate sequentially, 832 ms on eight
+#: threads and 293 ms on eight processes.
 WORKERS = ["cpu"] * 8
 
 

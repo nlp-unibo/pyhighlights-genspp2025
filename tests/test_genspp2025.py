@@ -147,7 +147,7 @@ def test_the_two_halves_of_hatexplain_build_their_vocabularies_differently(tmp_p
 
     ``baselines/configurations/model.py`` sets ``use_pretrained_only=True``, and
     under that flag ``GloVeEmbedderCollator.fit`` discards the dataframe it is
-    handed and takes all of ``twitter.27B`` as its vocabulary -- so no
+    handed and takes all of ``twitter.27B`` as its vocabulary, so no
     evaluation token the file covers is ever unknown.
 
     The genetic half does the opposite: ``Dataset.__build_tokenizer`` reads the
@@ -181,8 +181,8 @@ def test_the_two_halves_of_hatexplain_build_their_vocabularies_differently(tmp_p
 def test_the_toy_corpus_reaches_a_model_as_one_hot(tmp_path):
     """The release does not embed this corpus, it one-hots it.
 
-    Both halves build a one-hot matrix and hand it over -- the baselines
-    through ``OneHotEmbedderCollator``, the genetic half through
+    Both halves build a one-hot matrix and hand it over, the baselines
+    through ``OneHotEmbedderCollator`` and the genetic half through
     ``OneHotEmbedder``. This reproduction froze a *random* table instead,
     which is a different corpus to learn from: its rows had norm 5.16 and
     reached a cosine of 0.58 with one another, where one-hot rows are
@@ -222,7 +222,7 @@ def test_a_dead_one_hot_column_changes_nothing_but_the_weight_count():
     """Why the release's 25 and 26 are both fine, and neither is kept.
 
     The corpus uses twenty-four characters, so a one-hot code needs twenty-four
-    columns -- id zero is the zero row and carries none. The baselines declare
+    columns, since id zero is the zero row and carries none. The baselines declare
     25 and the genetic half 26, and the extra columns are never set, so their
     input weights never receive a gradient.
 
@@ -294,8 +294,8 @@ def test_the_proxy_reads_a_published_archive_of_the_old_schema(tmp_path):
 
     The published record now carries the corpus already converted, so the
     registered key does not go through this. It is kept for a copy of the
-    release -- from the reference implementation, or made before the record was
-    converted -- which would otherwise have nothing to read it with.
+    release, from the reference implementation or made before the record was
+    converted, which would otherwise have nothing to read it with.
     """
     archive = tmp_path / "pyhighlights-genspp-toy-v1.zip"
     with zipfile.ZipFile(archive, "w") as target:
@@ -328,7 +328,7 @@ def test_the_registered_toy_key_names_the_published_artifact():
     assert loader.member == "corpus.pkl"
     # The digest of what the build produces, pinned before the deposit rather
     # than after it: two builds of the same released pickle are byte for byte
-    # the same, so publishing cannot change this number -- only `RECORD` moves.
+    # the same, so publishing cannot change this number. Only `RECORD` moves.
     assert loader.sha256 == SHA256
     # The released baselines' split scheme, which the artifact does not store.
     assert (loader.train_ratio, loader.val_ratio, loader.split_seed) == (
@@ -421,8 +421,8 @@ def test_the_search_scores_candidates_across_the_workers_the_job_allocates():
 def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path):
     """The other half of a comparison: what the numbers took to produce.
 
-    Nothing is published to set these beside, so the table is measured alone
-    -- and a model that has not been run, or a tree written before the library
+    Nothing is published to set these beside, so the table is measured alone,
+    and a model that has not been run, or a tree written before the library
     reported costs, has to say so rather than print a zero.
     """
     import json

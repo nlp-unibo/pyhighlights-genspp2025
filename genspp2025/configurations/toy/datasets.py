@@ -43,9 +43,9 @@ class ToyConfig(LoaderConfig):
     ``structure_indexes`` instead of a highlight vector, is read with
     :class:`genspp2025.components.corpora.ReleasedToyLoader`.
 
-    ``url`` is set rather than left null on purpose. Null, the loader generates
-    -- and a corpus of the same shape and different content is precisely what a
-    reproduction must not quietly get.
+    ``url`` is set rather than left null on purpose. Null, the loader
+    generates, and a corpus of the same shape and different content is
+    precisely what a reproduction must not quietly get.
     """
 
     url: str | None = Param(URL)

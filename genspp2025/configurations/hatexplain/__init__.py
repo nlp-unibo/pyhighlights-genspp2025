@@ -6,7 +6,7 @@ the numbers:
 * posts over thirty tokens are **dropped**, which is how the released code
   bounds its compute;
 * ``offensive`` is folded into ``hatespeech`` **before** the annotators are
-  counted, leaving a two-class task -- fold it afterwards and a post the three
+  counted, leaving a two-class task. Fold it afterwards and a post the three
   annotators split three ways gets a different label;
 * the surviving votes and rationales are reduced by majority.
 

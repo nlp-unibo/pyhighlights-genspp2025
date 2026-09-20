@@ -15,13 +15,13 @@
 
 # The partition has to be named. The default is `sbuild`, which is the image
 # builder: eight cores, 32095 MB and no GPU, so a job asking for a GPU and
-# 32 GB is refused before it queues --
+# 32 GB is refused before it queues:
 #
 #   sbatch: error: Memory specification can not be satisfied
 #   sbatch: error: Batch job submission failed: Requested node configuration
 #   is not available
 #
-# -- and note that 32G is 32768 MB, which is 673 MB more than that node has
+# Note that 32G is 32768 MB, which is 673 MB more than that node has
 # whether or not a GPU is wanted. `l40s` is the choice among the GPU
 # partitions because it has four nodes to the others' one, so five array
 # tasks spread rather than queue behind each other; every GPU partition here
@@ -38,14 +38,16 @@
 # Why the model and not the corpus or the seed. A task runs its five seeds
 # itself and writes them into one `results.json`; five per-seed jobs would
 # write five run directories under one task name, and `MetricsAnalyzer` keeps
-# the newest run per name -- four seeds would vanish from the table rather
+# the newest run per name, so four seeds would vanish from the table rather
 # than fail. The model is the coarsest unit that still splits the cost where
 # the cost is: from the paper's appendix, a seed takes ~8 min for a baseline
 # on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain.
 #
-# Measured here, GenSPP on Toy is 4.5 hours a seed rather than 36 minutes --
-# 22 hours for its five, against 40 minutes for a baseline cell. The budget
-# is the paper's: a population of 50 over 100 generations at a selection rate
+# Measured here under pyhighlights 0.12.0, GenSPP on Toy was 4.5 hours a seed
+# rather than 36 minutes, 22 hours for its five against 40 minutes for a
+# baseline cell. 0.13.0 scores the candidates in processes and the cell has
+# not been timed since, so the limit below is still the one that fits the
+# slower figure. The budget is the paper's: a population of 50 over 100 generations at a selection rate
 # of 0.5 is 5050 candidates trained per seed. Hence `--time=3-00:00:00`, the
 # partition's own limit: nothing here resumes, `results.json` is written once
 # after the last seed, and a cell killed on its fifth seed loses all five.
@@ -72,20 +74,20 @@ EXTRA=()
 if [ "$CORPUS" = "hatexplain" ]; then
   # The 1.4 GB GloVe file, staged by `build.sbatch`. The task refuses without
   # it rather than training on a vocabulary of whatever the corpus happened to
-  # contain -- which is the defect pyhighlights 0.9.0's `requires_embeddings`
+  # contain, which is the defect pyhighlights 0.9.0's `requires_embeddings`
   # exists to make impossible.
   GLOVE="$SCRATCH/glove/glove.twitter.27B.25d.txt"
   if [ ! -f "$GLOVE" ]; then
-    echo "missing $GLOVE -- see README.md" >&2
+    echo "missing $GLOVE, see README.md" >&2
     exit 2
   fi
   EXTRA+=(--embeddings "$GLOVE")
 fi
 
-# The pinned packages are in the image -- see `build.sbatch` and
-# `cluster/env.def` -- so there is nothing to check for but the image itself.
+# The pinned packages are in the image, in `build.sbatch` and
+# `cluster/env.def`, so there is nothing to check for but the image itself.
 if [ ! -f env.sif ]; then
-  echo "missing $PWD/env.sif -- run cluster/build.sbatch first" >&2
+  echo "missing $PWD/env.sif, run cluster/build.sbatch first" >&2
   exit 2
 fi
 
@@ -94,8 +96,8 @@ fi
 # says why that matters: "problemi di latenza legati al IO sulla share di rete
 # /scratch.hpc". Measured on a build node, same URL and the same fifteen
 # seconds, a 16 kB-buffered write reached 41 kB/s there against 5.5 MB/s to
-# local disk. A training run is the worst possible shape for that -- a
-# checkpoint written every epoch of five hundred, per seed, per model -- so
+# local disk. A training run is the worst possible shape for that, a
+# checkpoint written every epoch of five hundred, per seed, per model, so
 # `save_path` points at local disk and scratch is written once, at the end.
 #
 # One directory per job, because the guidance also warns that two jobs sharing
@@ -117,7 +119,7 @@ trap collect EXIT
 
 # The corpora come with the job rather than being read off scratch a record at
 # a time: `build.sbatch` stages the toy corpus there, and this copies the
-# cache across in one pass -- single-digit megabytes, against a run that would
+# cache across in one pass: single-digit megabytes, against a run that would
 # otherwise read it over the network share.
 #
 # HateXplain is not staged by the build, so its thirteen megabytes are fetched
