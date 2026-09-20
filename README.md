@@ -6,17 +6,6 @@ Rationalization Through Genetic-based Learning*, ACL 2025, built on
 
 Two corpora, a synthetic one and HateXplain, against FR, MGR, MCD, G-RAT and
 GenSPP.
-**This repository is configuration.**
-Every component it names is the library's.
-What lives here is the paper's experimental design, the numbers it published,
-and what it takes to run them on a cluster.
-
-Nothing registers on import.
-A run builds the registry over this package with the library beside it, which
-is why `pyhighlights` is installed on the cluster and this repository is
-mounted rather than installed.
-An edit then runs without staging anything again, and the environment never
-holds a second copy of every registration.
 
 [Paper](https://aclanthology.org/2025.acl-long.59/) ·
 [Reference implementation](https://github.com/nlp-unibo/gen-spp) ·
@@ -49,8 +38,12 @@ uv run python run.py toy --smoke     # one seed, one batch, minutes
 
 `--smoke` bounds a baseline with `trainer_args`, which is what Lightning
 reads.
-A search reads none of it, since it builds a trainer per candidate.
-The GenSPP cell takes a search of its own instead: two candidates, one
+The GenSPP cell does not train one model.
+It runs a genetic search that trains a fresh predictor for every candidate it
+scores.
+That search builds its own trainer each time, so `trainer_args` never reaches
+it.
+`--smoke` gives the cell a smaller search instead: two candidates over one
 generation, every other setting the paper's.
 
 ## Cluster
@@ -71,9 +64,10 @@ python compare.py --results results
 ```
 
 One job per model, five per corpus.
-The model is the coarsest unit that still splits the cost where the cost is:
-from the paper's appendix, a seed takes ~8 min for a baseline on Toy and
+The jobs split by model because the cost differs by model and not by seed.
+From the paper's appendix, a seed takes ~8 min for a baseline on Toy and
 ~36 min for GenSPP, ~4 and ~78 on HateXplain.
+A table's four cheap cells therefore do not wait behind its slow one.
 
 `run.sbatch` names `--partition=l40s`, since the cluster's default `sbuild` is
 the image builder and has no GPU.
@@ -87,28 +81,11 @@ a later submission picks it up.
 Neither job writes its working files on scratch, which is a network share:
 each runs on the node's own disk and copies its results tree up when the job
 ends, however it ends.
-The scripts carry the reasons for each of those choices at the line that makes
-them.
 
-Budget three days for the GenSPP cell.
-The search is the paper's budget, so a population of 50 over 100 generations
+The search is a population of 50 over 100 generations
 at a selection rate of 0.5 trains 5050 candidates per seed.
 Nothing resumes and `results.json` is written once after the last seed, so a
 cell killed on its fifth loses all five.
-
-Since pyhighlights 0.13.0 a search scores its candidates in worker processes
-rather than on threads, measured by the library on a 24-core machine over
-sixteen candidates of the toy search.
-
-| workers | ms per candidate | hours per seed at 5050 |
-|---|---|---|
-| sequential | 1442 | 2.02 |
-| eight threads | 832 | 1.17 |
-| eight processes | 293 | 0.41 |
-
-That machine is not the cluster.
-The cell has not been timed on the cluster's eight cores, so the three-day
-budget stands until a run replaces it.
 
 ## Results
 
@@ -128,10 +105,11 @@ which the paper reports none of.
 | `models trained` | Models a seed trained, which is one for a baseline and 5050 for a search. |
 | `at once` | Candidates scored in parallel, one per worker. |
 
-A baseline trains one model per seed, where GenSPP trains its founders plus
-every generation's children and reports the winner.
-So `runtime/model` is `runtime × at-once / models-trained`, which for a
-baseline is its own wall clock.
+A baseline trains one model per seed.
+GenSPP trains its founders and every generation's children, then reports the
+winner, so its `runtime/seed` covers 5050 models where a baseline's covers one.
+`runtime/model` divides that out as `runtime × at-once / models-trained`, and
+for a baseline it is the seed's own wall clock.
 
 `memory/peak` is a ceiling rather than a share.
 It is not the sum of the workers, since summing would count a forked page once
@@ -163,21 +141,23 @@ baseline, and nothing here computes them.
 
 ## Differences from the release
 
-Checked against the reference implementation file by file.
-The corpora, the training settings and the search parameters match it.
-Each difference is documented at the point it matters, in the configurations
-and in the library's `docsrc/source/benchmarks.rst`.
+This reproduction was checked against the reference implementation file by
+file, and the corpora, the training settings and the search parameters match
+it.
+Five differences remain, three of them in how the data is prepared and two in
+how the search runs.
+The table below is the whole of what a number produced here does not share
+with a number produced there.
+Each row is documented at the point it matters, in the configurations and in
+the library's `docsrc/source/benchmarks.rst`.
 
-HateXplain is parsed from upstream rather than from the release's pickles,
-giving 13507 rows either way, every one agreeing on tokens, label and
-highlight.
-One split scheme serves all five models, so the five numbers are comparable to
-each other.
-Validation is held out of training, where the released genetic code trains on
-all of train.
-Every candidate of a search sees one batch order.
-Mutation is uniform at 0.05, which explores the selector's decision threshold
-at 71% of the release's rate rather than half of it.
+| Difference | Here | In the release |
+|---|---|---|
+| HateXplain source | Parsed from upstream, 13507 rows, every one agreeing with the release on tokens, label and highlight | Read from the release's own pickles |
+| Split scheme | One scheme serves all five models, so the five numbers are comparable to each other | A scheme per model |
+| Validation rows | Held out of training | Trained on, by the genetic code |
+| Batch order | One order per search, seen by every candidate | An order per candidate |
+| Mutation | Uniform at 0.05, which explores the selector's decision threshold at 71% of the release's rate | Half that rate at the threshold |
 
 ## Corpora
 
