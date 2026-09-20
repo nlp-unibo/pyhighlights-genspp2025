@@ -10,8 +10,10 @@ dist/
 .pytest_cache/
 
 # A run's output, and the reason this repository is small. `results/` is what
-# `compare.py` reads and what gets archived somewhere that is not git.
-results/
+# `compare.py` reads and what gets archived somewhere that is not git. The
+# glob covers a set copied off the cluster beside it, named for the library
+# version that produced it.
+results*/
 logs/
 archive/
 
