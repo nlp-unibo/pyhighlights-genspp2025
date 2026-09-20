@@ -4,8 +4,10 @@ A reproduction of Ruggeri and Signorelli, 2025, *Interlocking-free Selective
 Rationalization Through Genetic-based Learning*, ACL 2025, built on
 [pyhighlights](https://github.com/nlp-unibo/pyhighlights).
 
-Two corpora, a synthetic one and HateXplain, against FR, MGR, MCD, G-RAT and
-GenSPP.
+It runs two corpora, a synthetic one and HateXplain, against the five
+architectures that paper compares: FR, MGR, MCD, G-RAT and GenSPP.
+A **cell** is one of those models on one corpus over the paper's five seeds,
+and it is the unit everything here counts in.
 
 [Paper](https://aclanthology.org/2025.acl-long.59/) ·
 [Reference implementation](https://github.com/nlp-unibo/gen-spp) ·
@@ -36,7 +38,7 @@ uv run pytest                        # 15 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
-`--smoke` bounds a baseline with `trainer_args`, which is what Lightning
+`--smoke` shortens a baseline by setting `trainer_args`, which Lightning
 reads.
 The GenSPP cell does not train one model.
 It runs a genetic search that trains a fresh predictor for every candidate it
@@ -63,11 +65,11 @@ sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
 python compare.py --results results
 ```
 
-One job per model, five per corpus.
+One job per model, five per corpus, so a job produces a cell.
 The jobs split by model because the cost differs by model and not by seed.
 From the paper's appendix, a seed takes ~8 min for a baseline on Toy and
 ~36 min for GenSPP, ~4 and ~78 on HateXplain.
-A table's four cheap cells therefore do not wait behind its slow one.
+The four cheap cells of a corpus therefore do not wait behind its slow one.
 
 `run.sbatch` names `--partition=l40s`, since the cluster's default `sbuild` is
 the image builder and has no GPU.
@@ -78,12 +80,13 @@ cluster/run.sbatch ...`.
 under `$SCRATCH/cache/pyhighlights`, and fetches GloVe once for HateXplain.
 `sbatch cluster/build.sbatch --skip-glove` stops before that 1.4 GB file, and
 a later submission picks it up.
-Neither job writes its working files on scratch, which is a network share:
-each runs on the node's own disk and copies its results tree up when the job
+Scratch is a network share, so neither job writes its working files there.
+Each runs on the node's own disk and copies its results tree up when the job
 ends, however it ends.
 
-The search is a population of 50 over 100 generations
-at a selection rate of 0.5 trains 5050 candidates per seed.
+The search is a population of 50 over 100 generations at a selection rate of
+0.5.
+That is 5050 candidates trained per seed.
 Nothing resumes and `results.json` is written once after the last seed, so a
 cell killed on its fifth loses all five.
 
@@ -91,8 +94,9 @@ cell killed on its fifth loses all five.
 
 `compare.py` prints two tables per corpus.
 The first is the paper's numbers beside the run's.
-The second is what the run cost, from the `cost_` columns every seed writes,
-which the paper reports none of.
+The second is what the run cost, taken from the `cost_` columns every seed
+writes.
+The paper reports none of it.
 
 | Column | What it means |
 |---|---|
@@ -106,24 +110,25 @@ which the paper reports none of.
 | `at once` | Candidates scored in parallel, one per worker. |
 
 A baseline trains one model per seed.
-GenSPP trains its founders and every generation's children, then reports the
-winner, so its `runtime/seed` covers 5050 models where a baseline's covers one.
+GenSPP trains its initial population and every generation's children, then
+reports the winner.
+Its `runtime/seed` therefore covers 5050 models, and a baseline's covers one.
 `runtime/model` divides that out as `runtime × at-once / models-trained`, and
 for a baseline it is the seed's own wall clock.
 
-`memory/peak` is a ceiling rather than a share.
+`memory/peak` is what a machine has to have for the seed, not what one model
+uses.
 It is not the sum of the workers, since summing would count a forked page once
 per worker that never wrote to it.
 There is no per-model memory to divide out either.
-Read it as what a machine has to have.
 
-A cell reads `-` where a model has not been run, or where the tree predates the
-library reporting costs.
+An entry reads `-` where a model has not been run, or where the tree predates
+the library reporting costs.
 
 ## Reproducibility
 
 Table 1 reproduces.
-All five models on both corpora, over the paper's five seeds
+It runs all five models on both corpora, over the paper's five seeds
 `[2023, 15451, 1337, 2001, 2080]`.
 The four columns it reports are macro F1, token-level highlight F1, selection
 rate and selection size.
@@ -134,7 +139,8 @@ then injected into the initial population.
 `GenSPPTrainer` builds every founder at random, with no way to seed one.
 `GenSPP (G = 150)` is the exception, since it is `n_generations=150` and
 nothing else.
-Tracked as pyhighlights' open point 7.
+Tracked upstream as
+[pyhighlights issue 124](https://github.com/nlp-unibo/pyhighlights/issues/124).
 
 The `**` significance markers are Wilcoxon over seeds against the best
 baseline, and nothing here computes them.
@@ -146,8 +152,7 @@ file, and the corpora, the training settings and the search parameters match
 it.
 Five differences remain, three of them in how the data is prepared and two in
 how the search runs.
-The table below is the whole of what a number produced here does not share
-with a number produced there.
+The table below is complete, so nothing outside it differs.
 Each row is documented at the point it matters, in the configurations and in
 the library's `docsrc/source/benchmarks.rst`.
 
@@ -161,8 +166,8 @@ the library's `docsrc/source/benchmarks.rst`.
 
 ## Corpora
 
-There is no loader here for the toy corpus.
-It is `pyhighlights.components.loaders.ToyLoader` with a `url`.
+The toy corpus is read by `pyhighlights.components.loaders.ToyLoader` with a
+`url`, so this repository defines no loader of its own.
 One loader generates, saves and reads, so a published toy corpus is a URL and
 a digest in a configuration rather than a class somebody writes per dataset.
 
@@ -179,8 +184,8 @@ bytes from the release's pickle, and
 original pickle, which the first version of the record still carries and the
 reference implementation ships.
 That file stores `structure_indexes`, the positions a highlight marks, where
-the library stores a vector, so the proxy fills in that column and hands the
-rest to `ToyLoader`.
+the library stores a vector.
+`ReleasedToyLoader` fills in that column and hands the rest to `ToyLoader`.
 
 ```python
 from genspp2025.components.corpora import ReleasedToyLoader
@@ -188,7 +193,8 @@ from genspp2025.components.corpora import ReleasedToyLoader
 splits = ReleasedToyLoader(url="toy_dataset.pkl").load()
 ```
 
-Nothing registers it.
+`ReleasedToyLoader` is registered nowhere, so no configuration reaches it by
+key.
 A test pins that it and a plain `ToyLoader` over the converted file return the
 same rows.
 
