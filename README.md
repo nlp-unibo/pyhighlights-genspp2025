@@ -4,13 +4,23 @@ A reproduction of Ruggeri and Signorelli, 2025, *Interlocking-free Selective
 Rationalization Through Genetic-based Learning*, ACL 2025, built on
 [pyhighlights](https://github.com/nlp-unibo/pyhighlights).
 
-- Paper: <https://aclanthology.org/2025.acl-long.59/>
-- Reference implementation: <https://github.com/nlp-unibo/gen-spp>
-
 Two corpora, a synthetic one and HateXplain, against FR, MGR, MCD, G-RAT and
-GenSPP. **This repository is configuration.** Every component it names is the
-library's; what lives here is the paper's experimental design, the numbers it
-published, and what it takes to run them on a cluster.
+GenSPP.
+**This repository is configuration.**
+Every component it names is the library's.
+What lives here is the paper's experimental design, the numbers it published,
+and what it takes to run them on a cluster.
+
+Nothing registers on import.
+A run builds the registry over this package with the library beside it, which
+is why `pyhighlights` is installed on the cluster and this repository is
+mounted rather than installed.
+An edit then runs without staging anything again, and the environment never
+holds a second copy of every registration.
+
+[Paper](https://aclanthology.org/2025.acl-long.59/) ·
+[Reference implementation](https://github.com/nlp-unibo/gen-spp) ·
+[Library](https://github.com/nlp-unibo/pyhighlights)
 
 ## Layout
 
@@ -22,54 +32,34 @@ published, and what it takes to run them on a cluster.
 | `run.py` | run one cell, or a corpus's five |
 | `cluster/` | the Slurm jobs, and the image they build |
 
-Nothing registers on import. A run builds the registry over this package with
-the library beside it, which is why `pyhighlights` is installed on the cluster
-and this repository is mounted rather than installed: an edit runs without
-staging anything again, and the environment never holds a second copy of every
-registration.
+## Installation
 
-## Locally
+The reproduction requires Python 3.10 or later.
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
+```
+
+## Usage
+
+```bash
 uv run pytest                        # 15 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
 `--smoke` bounds a baseline with `trainer_args`, which is what Lightning
-reads. A search reads none of it, since it builds a trainer per candidate, so
-the GenSPP cell takes a search of its own instead: two candidates, one
-generation, every other setting the paper's. Without it that cell ran the full
-fifty candidates over a hundred generations under a flag that promises
-minutes.
+reads.
+A search reads none of it, since it builds a trainer per candidate.
+The GenSPP cell takes a search of its own instead: two candidates, one
+generation, every other setting the paper's.
 
-## On the cluster
+## Cluster
 
-Submit from the repository root: neither job sets `--chdir`, so each runs in
-the directory it was submitted from. Both stage into `$SCRATCH`, which
-defaults to `/scratch.hpc/$USER` and can be set to any other path before
-submitting.
-
-**Neither job does its writing there.** `/scratch.hpc` is a network share with
-known IO latency. The cluster's own guidance says so, and measured on a build
-node, same URL and the same fifteen seconds, a 16 kB-buffered write reached
-41 kB/s against 5.5 MB/s to local disk. A training run is the worst shape for
-that, a checkpoint per epoch per seed per model, so a run writes on the node's
-own disk and its results tree is copied up once when the job ends, however it
-ends, so a job that hits its time limit still leaves the cells it finished.
-One directory per job, because that guidance also warns that two jobs sharing
-a node-local path clean up under each other.
-
-The corpora travel with the job too. `build.sbatch` stages the toy corpus
-under `$SCRATCH/cache/pyhighlights` and each run copies that cache across in
-one pass, rather than reading it over the share. HateXplain is not staged, so
-each of its five jobs fetches its own thirteen megabytes. The variable is
-`PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
-read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless told
-otherwise, and apptainer binds your home into the container, so leaving it
-unset puts corpora in the home directory that has a quota. The local copy is
-not written back: five array jobs writing one cache is a race nothing here
-arbitrates.
+Submit from the repository root.
+Neither job sets `--chdir`, so each runs in the directory it was submitted
+from.
+Both stage into `$SCRATCH`, which defaults to `/scratch.hpc/$USER` and can be
+set to any other path before submitting.
 
 ```bash
 mkdir -p logs
@@ -80,31 +70,35 @@ sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
 python compare.py --results results
 ```
 
-`run.sbatch` names `--partition=l40s`; the cluster's default is `sbuild`, the
-image builder, which has no GPU and 32095 MB, less than the 32768 MB a
-`--mem=32G` job asks for, so a submission there is refused outright. `l40s`
-has four nodes where the other GPU partitions have one, so five array tasks
-spread rather than queue behind one another. Override with `sbatch
---partition=<name> cluster/run.sbatch ...`.
+One job per model, five per corpus.
+The model is the coarsest unit that still splits the cost where the cost is:
+from the paper's appendix, a seed takes ~8 min for a baseline on Toy and
+~36 min for GenSPP, ~4 and ~78 on HateXplain.
 
-One job per model, five per corpus. From the paper's appendix, a seed takes
-~8 min for a baseline on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain.
-So GenSPP is hours where a baseline is minutes, and splitting per model keeps
-a table off the slowest cell's critical path.
+`run.sbatch` names `--partition=l40s`, since the cluster's default `sbuild` is
+the image builder and has no GPU.
+Override it per submission with `sbatch --partition=<name>
+cluster/run.sbatch ...`.
 
-**Budget three days for the GenSPP cell.** The search is the paper's budget: a
-population of 50 over 100 generations at a selection rate of 0.5 trains 5050
-candidates per seed. Nothing resumes and `results.json` is written once after
-the last seed, so a cell killed on its fifth loses all five, and `--time` is
-the partition's own limit for that reason.
+`build.sbatch` builds the image from `cluster/env.def`, stages the toy corpus
+under `$SCRATCH/cache/pyhighlights`, and fetches GloVe once for HateXplain.
+`sbatch cluster/build.sbatch --skip-glove` stops before that 1.4 GB file, and
+a later submission picks it up.
+Neither job writes its working files on scratch, which is a network share:
+each runs on the node's own disk and copies its results tree up when the job
+ends, however it ends.
+The scripts carry the reasons for each of those choices at the line that makes
+them.
 
-The cell was 4.5 hours a seed on Toy under pyhighlights 0.12.0, against the
-appendix's 36 minutes, because the search scored its eight candidates on
-Python threads and the interpreter lock rather than the cores set the pace. A
-running search measured 78 threads at 240% of a possible 800%. Since 0.13.0
-the candidates are scored in worker processes instead, each held to one torch
-thread, which the library measured on a 24-core machine over sixteen
-candidates of the toy search:
+Budget three days for the GenSPP cell.
+The search is the paper's budget, so a population of 50 over 100 generations
+at a selection rate of 0.5 trains 5050 candidates per seed.
+Nothing resumes and `results.json` is written once after the last seed, so a
+cell killed on its fifth loses all five.
+
+Since pyhighlights 0.13.0 a search scores its candidates in worker processes
+rather than on threads, measured by the library on a 24-core machine over
+sixteen candidates of the toy search.
 
 | workers | ms per candidate | hours per seed at 5050 |
 |---|---|---|
@@ -112,174 +106,101 @@ candidates of the toy search:
 | eight threads | 832 | 1.17 |
 | eight processes | 293 | 0.41 |
 
-That machine is not this one. The cell has not yet been timed on the cluster's
-eight cores, so the three-day budget stands until a run replaces it.
+That machine is not the cluster.
+The cell has not been timed on the cluster's eight cores, so the three-day
+budget stands until a run replaces it.
 
-### The cost table
+## Results
 
-`compare.py` prints a second table per corpus: runtime, inference time, memory
-and parameters, from the `cost_` columns every seed writes. The paper reports
-none of it, so there is no published half: it is filled by running the
-experiments.
+`compare.py` prints two tables per corpus.
+The first is the paper's numbers beside the run's.
+The second is what the run cost, from the `cost_` columns every seed writes,
+which the paper reports none of.
 
-```
-=== toy: cost ===
- model runtime/model runtime/seed inference/batch inference/pass memory/peak parameters trainable frozen models trained at once
-    fr  0.45s ± 0.00 0.45s ± 0.00       4.1 ± 0.0   0.17s ± 0.00     888 ± 0       2.3k      1.7k    600              1       1
-   mcd  0.57s ± 0.00 0.57s ± 0.00       5.9 ± 0.0   0.23s ± 0.00     891 ± 0       4.6k      3.4k   1.2k              1       1
-genspp  2.27s ± 0.00 2.27s ± 0.00       2.6 ± 0.0   0.13s ± 0.00     898 ± 0       2.9k       859   2.0k              4       4
-```
+| Column | What it means |
+|---|---|
+| `runtime/model` | Wall clock per model trained, which is the column to compare rows on. |
+| `runtime/seed` | Wall clock per seed, which for a search counts every candidate it trained. |
+| `inference/batch` | Milliseconds per batch at inference. |
+| `inference/pass` | Wall clock for one pass over the test split. |
+| `memory/peak` | High-water mark for the seed, the larger of this process and the largest single worker reaped. |
+| `parameters` | Parameters of the model as it was scored, split into `trainable` and `frozen`. |
+| `models trained` | Models a seed trained, which is one for a baseline and 5050 for a search. |
+| `at once` | Candidates scored in parallel, one per worker. |
 
-**`runtime/model` is the column to compare rows on.** A baseline trains one
-model per seed. GenSPP trains its founders plus every generation's children,
-several at a time, and reports the winner. So `runtime/seed` would say a
-search is as cheap as the machine that ran it. The per-model figure is
-`runtime × at-once / models-trained`, which for a baseline is its own wall
-clock. `inference/batch` is in milliseconds.
+A baseline trains one model per seed, where GenSPP trains its founders plus
+every generation's children and reports the winner.
+So `runtime/model` is `runtime × at-once / models-trained`, which for a
+baseline is its own wall clock.
 
-**`memory/peak` is a ceiling, not a share.** It is a high-water mark for the
-whole seed. Since 0.13.0 it is the larger of this process and the largest
-single worker that was reaped, because the candidates are no longer in this
-process. It is not the sum of the workers, which would count a forked page
-once per worker that never wrote to it. There is no per-model memory to divide
-out either, as most of the peak is resident before the first candidate exists.
-Read it as what a machine has to have, not as what a model uses.
+`memory/peak` is a ceiling rather than a share.
+It is not the sum of the workers, since summing would count a forked page once
+per worker that never wrote to it.
+There is no per-model memory to divide out either.
+Read it as what a machine has to have.
 
-The parameter counts are of the model as it was scored. The toy backbone's
-one-hot table is frozen by construction, which is why `frozen` is never zero.
-GenSPP's generator is frozen too. The search settled it and descent never
-moved it, so `trainable` is the predictor alone. A cell reads `-` where
-a model has not been run or the tree predates the library reporting costs.
+A cell reads `-` where a model has not been run, or where the tree predates the
+library reporting costs.
 
-A search scores eight candidates at once, one per worker, which is the
-released implementation's pool and the job's `--cpus-per-task=8`. Since
-pyhighlights 0.13.0 a worker is a process rather than a thread, and the
-measured return on the eight is in the table above.
+## Reproducibility
 
-### What `build.sbatch` stages
+Table 1 reproduces.
+All five models on both corpora, over the paper's five seeds
+`[2023, 15451, 1337, 2001, 2080]`.
+The four columns it reports are macro F1, token-level highlight F1, selection
+rate and selection size.
 
-**The image.** Built from `cluster/env.def`, which holds the base tag and the
-pins, so a job needs nothing on scratch but its results. A build rather than
-an `apptainer pull` also writes the finished SIF once where a cached pull
-writes it twice, and scratch here measures 11.6 MB/s sequential.
-
-`--ignore-fakeroot-command` is not optional. Without it apptainer wraps
-`%post` in its own `fakeroot` and injects the host's `libfakeroot.so`, so a
-host newer than the base image fails before pip is reached:
-
-```
-/bin/sh: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.38' not found
-(required by /.singularity.d/libs/libfakeroot.so)
-```
-
-Every `pytorch/pytorch` runtime tag is Ubuntu 22.04 with glibc 2.35, so no tag
-of that base answers a host needing 2.38. The flag drops the wrapper and
-leaves the namespace's own root mapping, which is all `%post` needs now that
-it only runs pip.
-
-The layers are cached on scratch but the image is **assembled on the node's
-own disk**, because assembly unpacks the whole image as ordinary files and
-squashes them back: on `/scratch.hpc` that managed 1.4 GB of a 7 GB image in
-two and a half hours, the process at one percent of a core waiting on the
-filesystem. A node with less than 20 GB free falls back to scratch and says
-so, and the directory is cleared first: a cancelled build leaves nine
-gigabytes of unpacked image behind, and the next one would measure the free
-space around it.
-
-The build gets three attempts, for the registry resetting an HTTP/2 stream
-partway through the base image (`stream error: stream ID 7; INTERNAL_ERROR;
-received from peer`).
-
-Each step logs the elapsed time since the job started, as `[+12:34]`. There
-are no progress bars. The output is a file, so apptainer prints no bar and
-`mksquashfs` prints nothing at all. The stamps are what tells a conversion
-that is working from one that is hung. GloVe is the exception:
-`wget` dots it, a megabyte a dot and thirty-two to a line.
-
-**GloVe**, for HateXplain. 1.4 GB, fetched once into `$SCRATCH/glove` rather
-than by five array jobs at the same time, and kept beside the image rather
-than inside it: the image is rebuilt whenever a pin moves, and this file never
-changes. Toy needs none of it, so `sbatch cluster/build.sbatch --skip-glove`
-stops before it and a later submission picks it up, since everything above it
-is a no-op once the image exists.
-
-It is fetched from Stanford's own upload to the Hugging Face hub before
-`nlp.stanford.edu`, and the order is a fallback rather than a race: `wget` has
-no minimum-rate option, and `--read-timeout` fires on a host that stops
-sending rather than on one that trickles.
-
-**The download does not touch scratch.** It is fetched and unzipped on the
-node's own disk and copied across in one pass, because scratch collapses under
-small writes. Measured on a build node, same URL and same fifteen seconds:
-`curl` writing its 16 kB buffers reached 41 kB/s to `/scratch.hpc` against
-5.5 MB/s to `/tmp`, while `dd bs=1M` on that same filesystem reached
-11.6 MB/s. It is a fault worth reporting rather than only coding around, since
-every run writes its results there too. Stanford publishes no digest, so the
-check is on the shape of what came out: 25 dimensions plus the token is 26
-fields on line one.
-
-`run.sbatch` still refuses to start without it, and so does the task:
-`requires_embeddings` exists because the registered HateXplain task once ran
-without its vector file and reported numbers for a two-word vocabulary.
-
-**The toy corpus** is fetched from Zenodo
-([10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019), CC-BY-4.0,
-released by both authors) and digest-verified. `build.sbatch` does it once
-while a person is reading the log, rather than five array jobs at once on a
-node that may have no outbound network.
-
-## What is reproducible, and what is not
-
-**Table 1 is.** All five models on both corpora, the paper's five seeds
-`[2023, 15451, 1337, 2001, 2080]`, and the four columns it reports: macro F1,
-token-level highlight F1, selection rate and selection size.
-
-**Table 2 is not, except one row.** The skew experiment needs a selector
-pre-trained to select the first token and then injected into the initial
-population, and `GenSPPTrainer` builds every founder at random with no way to
-seed one. `GenSPP (G = 150)` is the exception: it is `n_generations=150` and
-nothing else. Tracked as pyhighlights' open point 7.
+Table 2 does not, except one row.
+The skew experiment needs a selector pre-trained to select the first token and
+then injected into the initial population.
+`GenSPPTrainer` builds every founder at random, with no way to seed one.
+`GenSPP (G = 150)` is the exception, since it is `n_generations=150` and
+nothing else.
+Tracked as pyhighlights' open point 7.
 
 The `**` significance markers are Wilcoxon over seeds against the best
-baseline. Nothing here computes them.
+baseline, and nothing here computes them.
 
-## Where this is not the release
+## Differences from the release
 
-Checked against the reference implementation file by file. The corpora, the
-training settings and the search parameters match it; the differences are
-documented at the point they matter, in the configurations and in the
-library's `docsrc/source/benchmarks.rst`. In short: HateXplain is parsed from
-upstream rather than from the release's pickles (13507 rows either way, every
-one agreeing on tokens, label and highlight); one split scheme serves all five
-models, so the five numbers are comparable to each other; validation is held
-out of training, where the released genetic code trains on all of train; every
-candidate of a search sees one batch order; and mutation is uniform at 0.05,
-which explores the selector's decision threshold at 71% of the release's rate
-rather than half of it.
+Checked against the reference implementation file by file.
+The corpora, the training settings and the search parameters match it.
+Each difference is documented at the point it matters, in the configurations
+and in the library's `docsrc/source/benchmarks.rst`.
 
-## The corpus, and the proxy
+HateXplain is parsed from upstream rather than from the release's pickles,
+giving 13507 rows either way, every one agreeing on tokens, label and
+highlight.
+One split scheme serves all five models, so the five numbers are comparable to
+each other.
+Validation is held out of training, where the released genetic code trains on
+all of train.
+Every candidate of a search sees one batch order.
+Mutation is uniform at 0.05, which explores the selector's decision threshold
+at 71% of the release's rate rather than half of it.
 
-There is no loader here for the toy corpus. It is
-`pyhighlights.components.loaders.ToyLoader` with a `url`: one loader
-generates, saves and reads, so a published toy corpus is a URL and a digest in
-a configuration rather than a class somebody writes per dataset.
+## Corpora
 
-The artifact this configuration names holds the corpus in the library's own
-columns, converted when the artifact is built, so nothing converts it on the
-way in.
+There is no loader here for the toy corpus.
+It is `pyhighlights.components.loaders.ToyLoader` with a `url`.
+One loader generates, saves and reads, so a published toy corpus is a URL and
+a digest in a configuration rather than a class somebody writes per dataset.
 
-It is [10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019),
-`pyhighlights-genspp-toy-v2.zip`, the second version of the record. The first
-holds the release's own pickle. `pyhighlights/tools/build_datasets.py
---skip-r2a` reproduces the published bytes from that pickle, and
+The artifact this configuration names is
+[10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019),
+`pyhighlights-genspp-toy-v2.zip`.
+It holds the corpus in the library's own columns, converted when the artifact
+was built, so nothing converts it on the way in.
+`pyhighlights/tools/build_datasets.py --skip-r2a` reproduces the published
+bytes from the release's pickle, and
 `genspp2025/configurations/toy/datasets.py` pins their digest.
 
-`genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for the
-**original** pickle: what the published record still carries, what the
-reference implementation ships, and what a copy made before the conversion
-is. That file stores `structure_indexes`, the positions a highlight marks,
-where the library stores a vector; the proxy fills in that column and hands
-the rest to `ToyLoader`:
+`genspp2025/components/corpora.py` holds a `ReleasedToyLoader` for that
+original pickle, which the first version of the record still carries and the
+reference implementation ships.
+That file stores `structure_indexes`, the positions a highlight marks, where
+the library stores a vector, so the proxy fills in that column and hands the
+rest to `ToyLoader`.
 
 ```python
 from genspp2025.components.corpora import ReleasedToyLoader
@@ -287,6 +208,17 @@ from genspp2025.components.corpora import ReleasedToyLoader
 splits = ReleasedToyLoader(url="toy_dataset.pkl").load()
 ```
 
-Nothing registers it. A test pins that it and a plain `ToyLoader` over the
-converted file return the same rows. Otherwise converting the artifact changed
-the corpus rather than its serialisation.
+Nothing registers it.
+A test pins that it and a plain `ToyLoader` over the converted file return the
+same rows.
+
+HateXplain needs GloVe, which `build.sbatch` fetches.
+`run.sbatch` refuses to start without it, and so does the task.
+`requires_embeddings` exists because the registered HateXplain task once ran
+without its vector file and reported numbers for a two-word vocabulary.
+
+## Contact
+
+Questions about a component or a result are best raised as an
+[issue](https://github.com/nlp-unibo/pyhighlights-genspp2025/issues).
+For anything else, write to Federico Ruggeri, federico.ruggeri6@unibo.it.
