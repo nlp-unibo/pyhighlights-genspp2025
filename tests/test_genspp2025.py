@@ -1,5 +1,6 @@
 """The GenSPP 2025 reproduction: its keys, its values, and its corpora."""
 
+import sys
 import zipfile
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from pyhighlights.components.preprocessors import Preprocessor
 from pyhighlights.utility.embeddings import one_hot_table
 
 import genspp2025
+import run
 from genspp2025.components.corpora import ReleasedToyLoader
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR_TASK,
@@ -405,6 +407,23 @@ def test_a_smoke_search_is_small_where_trainer_arguments_cannot_reach():
     assert smoke.model == paper.model
     assert smoke.task_loss_limit == paper.task_loss_limit
     assert smoke.mutation_std == paper.mutation_std
+
+
+def test_a_run_takes_one_search_or_the_other(monkeypatch, capsys):
+    """Naming both search flags is refused rather than resolved.
+
+    `--smoke` and `--released-threshold` each replace the GenSPP cell's
+    search, so a run given both would have run one of them under the name of
+    the other and written the result where the table reads it.
+    """
+    monkeypatch.setattr(
+        sys, "argv", ["run.py", "toy", "--smoke", "--released-threshold"]
+    )
+    with pytest.raises(SystemExit) as refused:
+        run.main()
+
+    assert refused.value.code == 2
+    assert "not allowed with" in capsys.readouterr().err
 
 
 def test_the_released_threshold_arm_differs_in_one_parameter():

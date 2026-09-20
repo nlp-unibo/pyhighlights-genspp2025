@@ -104,8 +104,11 @@ def main() -> None:
         help="path to glove.twitter.27B.25d.txt; HateXplain refuses without it",
     )
     parser.add_argument("--results", default=Path("results"), type=Path)
-    parser.add_argument("--smoke", action="store_true")
-    parser.add_argument(
+    # Either flag replaces the GenSPP cell's search, so naming both would have
+    # to mean one of them silently losing.
+    search = parser.add_mutually_exclusive_group()
+    search.add_argument("--smoke", action="store_true")
+    search.add_argument(
         "--released-threshold",
         action="store_true",
         help="search Toy GenSPP with the release's threshold mutation, not the paper's",
