@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
-#SBATCH --time=3-00:00:00
+#SBATCH --time=24:00:00
 #SBATCH --output=logs/%x_%A_%a.log
 
 # No --chdir: the job runs in the directory it was submitted from, so submit
@@ -43,14 +43,18 @@
 # the cost is: from the paper's appendix, a seed takes ~8 min for a baseline
 # on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain.
 #
-# Measured here under pyhighlights 0.12.0, GenSPP on Toy was 4.5 hours a seed
-# rather than 36 minutes, 22 hours for its five against 40 minutes for a
-# baseline cell. 0.13.0 scores the candidates in processes and the cell has
-# not been timed since, so the limit below is still the one that fits the
-# slower figure. The budget is the paper's: a population of 50 over 100 generations at a selection rate
-# of 0.5 is 5050 candidates trained per seed. Hence `--time=3-00:00:00`, the
-# partition's own limit: nothing here resumes, `results.json` is written once
-# after the last seed, and a cell killed on its fifth seed loses all five.
+# The budget is the paper's: a population of 50 over 100 generations at a
+# selection rate of 0.5 is 5050 candidates trained per seed.
+#
+# `--time=24:00:00` is the cluster's own ceiling, so a cell has to fit inside
+# it. Measured under pyhighlights 0.12.0, GenSPP on Toy was 4.5 hours a seed
+# rather than 36 minutes, which is 22 hours for its five against 40 minutes
+# for a baseline cell. That left two hours of margin. 0.13.0 scores the
+# candidates in worker processes rather than on threads and the cell has not
+# been timed since, so the margin is expected to be larger and is not yet
+# known. Watch the first cell: nothing here resumes, `results.json` is written
+# once after the last seed, and a cell killed on its fifth seed loses all
+# five.
 #
 # Nothing here resumes. A job that dies leaves the cells it finished on disk
 # and the rest undone; delete that model's results directory and resubmit its
