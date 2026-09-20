@@ -17,6 +17,9 @@ TOY_MCD = key("model", "mcd", "toy")
 TOY_GRAT = key("model", "grat", "toy")
 TOY_GENSPP = key("model", "genspp", "toy")
 TOY_GENSPP_TRAINER = key("trainer", "genspp", "toy")
+TOY_GENSPP_RELEASED_THRESHOLD_TRAINER = key(
+    "trainer", "genspp", "toy", "released-threshold"
+)
 TOY_GENSPP_SMOKE_TRAINER = key("trainer", "genspp", "toy", "smoke")
 TOY_FR_TASK = key("task", "fr", "toy")
 TOY_MGR_TASK = key("task", "mgr", "toy")
