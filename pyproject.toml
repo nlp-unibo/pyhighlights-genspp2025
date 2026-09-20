@@ -26,7 +26,11 @@ dependencies = [
     #
     # 0.9.0 renamed `AnnotationAggregator(rationale=)` to `highlights=` and
     # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls.
-    "pyhighlights>=0.12.0,<0.13",
+    #
+    # 0.13.0 scores a search's candidates in worker processes rather than
+    # threads, which is what makes the GenSPP cell finish in a cluster's
+    # allocation rather than in three days of it.
+    "pyhighlights>=0.13.0,<0.14",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
