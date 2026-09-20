@@ -7,7 +7,7 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 #SBATCH --gres=gpu:1
-#SBATCH --time=24:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --output=logs/%x_%A_%a.log
 
 # No --chdir: the job runs in the directory it was submitted from, so submit
@@ -41,9 +41,14 @@
 # the newest run per name -- four seeds would vanish from the table rather
 # than fail. The model is the coarsest unit that still splits the cost where
 # the cost is: from the paper's appendix, a seed takes ~8 min for a baseline
-# on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain. So GenSPP is three
-# hours where a baseline is forty minutes, and running the five in one job
-# would make every table wait on the slowest cell.
+# on Toy and ~36 min for GenSPP, ~4 and ~78 on HateXplain.
+#
+# Measured here, GenSPP on Toy is 4.5 hours a seed rather than 36 minutes --
+# 22 hours for its five, against 40 minutes for a baseline cell. The budget
+# is the paper's: a population of 50 over 100 generations at a selection rate
+# of 0.5 is 5050 candidates trained per seed. Hence `--time=3-00:00:00`, the
+# partition's own limit: nothing here resumes, `results.json` is written once
+# after the last seed, and a cell killed on its fifth seed loses all five.
 #
 # Nothing here resumes. A job that dies leaves the cells it finished on disk
 # and the rest undone; delete that model's results directory and resubmit its
@@ -135,11 +140,27 @@ fi
 
 # `OMP_NUM_THREADS` because Slurm gives the job its cores, and torch sizing
 # its pool to the whole node would oversubscribe every one of them.
+#
+# One thread for GenSPP, because its parallelism is already spent: the search
+# scores eight candidates at once on a `ThreadPool`, and eight workers each
+# taking eight torch threads is sixty-four threads over the job's eight cores.
+# Measured on a running search -- 78 threads, and 240% of a possible 800%. The
+# cores are not the limit there and adding threads does not make them one: a
+# candidate is a small GRU, so its cost is Lightning stepping from Python,
+# which holds the GIL. That is also why the search buys 1.4x rather than 8x --
+# eight candidates of the toy search took 14.1 s on one worker and 10.0 s on
+# eight, and 7.4 s on eight with torch held to a thread each, which is this
+# setting.
+THREADS="${SLURM_CPUS_PER_TASK:-8}"
+if [ "$MODEL" = "genspp" ]; then
+  THREADS=1
+fi
+
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" --bind "$WORK:$WORK" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
-  --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
+  --env OMP_NUM_THREADS="$THREADS" \
   --env PYHIGHLIGHTS_CACHE="$WORK/cache/pyhighlights" \
   --env XDG_CACHE_HOME="$WORK/cache" \
   env.sif python run.py "$CORPUS" --model "$MODEL" \
