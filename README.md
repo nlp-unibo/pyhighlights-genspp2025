@@ -46,7 +46,7 @@ uv venv && uv pip install -e ".[dev]"
 ## Usage
 
 ```bash
-uv run pytest                        # 15 tests, seconds
+uv run pytest                        # 16 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
@@ -59,6 +59,18 @@ That search builds its own trainer each time, so `trainer_args` never reaches
 it.
 `--smoke` gives the cell a smaller search instead: two candidates over one
 generation, every other setting the paper's.
+
+`--released-threshold` searches Toy GenSPP the way the released
+implementation mutates rather than the way its paper reports it.
+The release perturbs the selector's output bias at 0.10 where every other
+gene takes 0.05, and the paper gives a single N(0.0, 0.05).
+The flag is registered for Toy alone, and it writes where `--results` says,
+which has to be somewhere other than the paper-faithful run: both carry the
+same task name, and `MetricsAnalyzer` reports the newest run under a name.
+
+```bash
+uv run python run.py toy --model genspp --released-threshold --results results-released
+```
 
 ## Cluster
 

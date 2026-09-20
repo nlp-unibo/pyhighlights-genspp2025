@@ -37,6 +37,7 @@ from genspp2025.configurations.toy.keys import (
     TOY_BENCHMARK,
     TOY_FR_TASK,
     TOY_GENSPP,
+    TOY_GENSPP_RELEASED_THRESHOLD_TRAINER,
     TOY_GENSPP_SMOKE_TRAINER,
     TOY_GENSPP_TASK,
     TOY_GENSPP_TRAINER,
@@ -404,6 +405,32 @@ def test_a_smoke_search_is_small_where_trainer_arguments_cannot_reach():
     assert smoke.model == paper.model
     assert smoke.task_loss_limit == paper.task_loss_limit
     assert smoke.mutation_std == paper.mutation_std
+
+
+def test_the_released_threshold_arm_differs_in_one_parameter():
+    """The arm that reproduces the release rather than its paper.
+
+    The release perturbs the selector's output bias at 0.10 where every other
+    gene takes 0.05, and its paper reports a single N(0.0, 0.05). The arm
+    exists to price that difference, so it has to be the paper's search in
+    every other respect: anything else that drifted would be measured as part
+    of the threshold.
+    """
+    build_registry()
+    paper = Registry.from_key(TOY_GENSPP_TRAINER, expected_type=GenSPPTrainer)
+    released = Registry.from_key(
+        TOY_GENSPP_RELEASED_THRESHOLD_TRAINER, expected_type=GenSPPTrainer
+    )
+
+    assert paper.threshold_mutation_std is None
+    assert released.threshold_mutation_std == 0.10
+    # `registration_key` is what tells the two apart, so it is the one other
+    # difference allowed.
+    assert {
+        name
+        for name, value in vars(released).items()
+        if not name.startswith("_") and vars(paper).get(name) != value
+    } == {"threshold_mutation_std", "registration_key"}
 
 
 def test_the_search_scores_candidates_across_the_workers_the_job_allocates():

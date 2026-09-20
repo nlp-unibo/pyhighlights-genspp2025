@@ -4,6 +4,7 @@
     python run.py toy --model genspp        # one cell
     python run.py hatexplain --embeddings glove.twitter.27B.25d.txt
     python run.py toy --smoke               # one seed, one batch, minutes
+    python run.py toy --model genspp --released-threshold --results results-released
 
 `--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
 search of its own, since a search reads no trainer argument.
@@ -11,6 +12,11 @@ search of its own, since a search reads no trainer argument.
 The registry is built over this package with the library beside it, so an edit
 here runs without reinstalling anything, which is why the container installs
 `pyhighlights` and not this repository.
+
+`--released-threshold` searches Toy GenSPP the way the released implementation
+mutates rather than the way its paper reports. It writes where `--results`
+says, which has to be somewhere other than the paper-faithful run: both carry
+the same task name, and `MetricsAnalyzer` reports the newest run under a name.
 
 `--smoke` writes under `results/smoke/` rather than beside the real runs.
 `MetricsAnalyzer` reports the newest run per task name, and a smoke result
@@ -72,6 +78,22 @@ def smoke_search(corpus: str):
     return getattr(module, f"{prefix}_GENSPP_SMOKE_TRAINER")
 
 
+def released_threshold_search(corpus: str):
+    """The search that mutates the threshold as the release mutates it.
+
+    The released GenSPP perturbs the selector's output bias at 0.10 where
+    every other gene takes 0.05, which its paper does not report. Registered
+    for Toy alone, which is the cell the difference is measured on.
+    """
+    if corpus != "toy":
+        raise SystemExit("--released-threshold is registered for toy alone")
+    from genspp2025.configurations.toy.keys import (
+        TOY_GENSPP_RELEASED_THRESHOLD_TRAINER,
+    )
+
+    return TOY_GENSPP_RELEASED_THRESHOLD_TRAINER
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("corpus", choices=("toy", "hatexplain"))
@@ -83,6 +105,11 @@ def main() -> None:
     )
     parser.add_argument("--results", default=Path("results"), type=Path)
     parser.add_argument("--smoke", action="store_true")
+    parser.add_argument(
+        "--released-threshold",
+        action="store_true",
+        help="search Toy GenSPP with the release's threshold mutation, not the paper's",
+    )
     arguments = parser.parse_args()
 
     if arguments.corpus == "hatexplain" and not arguments.embeddings:
@@ -110,6 +137,8 @@ def main() -> None:
         cell = dict(extra)
         if model == "genspp" and arguments.smoke:
             cell["search"] = smoke_search(arguments.corpus)
+        elif model == "genspp" and arguments.released_threshold:
+            cell["search"] = released_threshold_search(arguments.corpus)
         Registry.from_key(chosen[model], save_path=str(save_path), **cell).run()
 
 

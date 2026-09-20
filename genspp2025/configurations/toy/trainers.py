@@ -32,6 +32,23 @@ class ToyGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
 
 @register_class(
     name="trainer",
+    tags={"genspp", "toy", "released-threshold"},
+    namespace=NAMESPACE,
+    component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
+)
+class ToyGenSPPReleasedThresholdTrainerConfig(ToyGenSPPTrainerConfig):
+    """The search with the threshold explored at the rate the release uses.
+
+    The release mutates the selector's output bias at 0.10 where every other
+    gene takes 0.05, which its paper does not report. This key exists to
+    measure what that difference is worth on Toy.
+    """
+
+    threshold_mutation_std: float = Param(0.10, gt=0.0)
+
+
+@register_class(
+    name="trainer",
     tags={"genspp", "toy", "smoke"},
     namespace=NAMESPACE,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
