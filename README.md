@@ -46,7 +46,7 @@ uv venv && uv pip install -e ".[dev]"
 ## Usage
 
 ```bash
-uv run pytest                        # 16 tests, seconds
+uv run pytest                        # 17 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
