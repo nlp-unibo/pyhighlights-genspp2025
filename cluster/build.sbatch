@@ -54,54 +54,30 @@ export PYHIGHLIGHTS_CACHE="$SCRATCH/cache/pyhighlights"
 export XDG_CACHE_HOME="$SCRATCH/cache"
 mkdir -p "$PYHIGHLIGHTS_CACHE"
 
-# Apptainer caches the layers it fetches under `$HOME/.apptainer` by default,
-# and a home directory under quota fails the build after the download rather
-# than before it:
+# Apptainer's OCI cache and assembly both use node-local disk when it has
+# room. OCI fetches make many small writes, which are as slow on scratch as
+# image assembly. Scratch remains the fallback, where slow beats running out
+# of local space. Its cache persists so a later fallback build can reuse it.
 #
-#   FATAL: While performing build: conveyor failed to get: write
-#   /home/<user>/.apptainer/cache/blob/oci-layout: disk quota exceeded
-#
-# The cache goes to scratch, where this account has room, and is kept rather
-# than cleared: a rebuild that moves only a pin reuses the base image's layers
-# instead of fetching them again.
-export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
-mkdir -p "$APPTAINER_CACHEDIR"
-
-# The image is assembled on the node's own disk, not on scratch. Assembly
-# unpacks the layers as ordinary files and squashes them back, tens of
-# thousands of small writes: on scratch that ran at 1.4 GB in two and a half
-# hours for a seven gigabyte image, the process at one percent of a core
-# because it was waiting on the filesystem. That mount also reports `nodev`,
-# so the device nodes cannot be unpacked there at all.
-#
-# Scratch is the fallback for a node too small to hold the unpacked image
-# beside the SIF, where slow beats running out of room.
-#
-# One directory per job, removed when the job ends however it ends. The
-# cluster's own guidance warns that two jobs sharing a node-local path will
-# clean up under each other, and a shared name did exactly that: a cancelled
-# build left nine gigabytes of unpacked image behind, and the next build
-# measured the free space around it and fell back to scratch for no reason.
-# A job id in the name makes the directory this job's to delete. Anything
-# older than a day is a job that was killed outright, since nothing here
-# outlives a job by design.
+# One directory per job prevents concurrent jobs from cleaning up under each
+# other. Anything older than a day belongs to a job killed before its trap ran.
 LOCAL_ROOT="${TMPDIR:-/tmp}/${USER:-$(id -un)}-apptainer"
 mkdir -p "$LOCAL_ROOT"
 find "$LOCAL_ROOT" -mindepth 1 -maxdepth 1 -mtime +0 -exec rm -rf {} + 2>/dev/null || true
 LOCAL_TMP="$LOCAL_ROOT/${SLURM_JOB_ID:-$$}"
+SCRATCH_TMP="$SCRATCH/apptainer/tmp/${SLURM_JOB_ID:-$$}"
 mkdir -p "$LOCAL_TMP"
 AVAILABLE=$(df -Pk "$LOCAL_TMP" | awk 'NR==2 { print int($4 / 1048576) }')
 if [ "${AVAILABLE:-0}" -ge 20 ]; then
-  export APPTAINER_TMPDIR="$LOCAL_TMP"
+  export APPTAINER_CACHEDIR="$LOCAL_TMP/apptainer/cache"
+  export APPTAINER_TMPDIR="$LOCAL_TMP/apptainer/tmp"
 else
-  echo "local disk has ${AVAILABLE:-0}G, assembling on scratch instead (slow)" >&2
-  # Per job here too. This is the branch that unpacks nine gigabytes onto the
-  # share, and a killed job used to leave them there, which is how the
-  # quota that stopped the first build filled up.
-  export APPTAINER_TMPDIR="$SCRATCH/apptainer/tmp/${SLURM_JOB_ID:-$$}"
+  echo "local disk has ${AVAILABLE:-0}G, building on scratch instead (slow)" >&2
+  export APPTAINER_CACHEDIR="$SCRATCH/apptainer/cache"
+  export APPTAINER_TMPDIR="$SCRATCH_TMP"
 fi
-mkdir -p "$APPTAINER_TMPDIR"
-trap 'rm -rf "$LOCAL_TMP" "$APPTAINER_TMPDIR"' EXIT
+mkdir -p "$APPTAINER_CACHEDIR" "$APPTAINER_TMPDIR"
+trap 'rm -rf "$LOCAL_TMP" "$SCRATCH_TMP"' EXIT
 
 # Built from `cluster/env.def`, which holds the base tag and the pins, rather
 # than pulled: the pins end up in the image instead of in a virtualenv every
@@ -122,7 +98,7 @@ trap 'rm -rf "$LOCAL_TMP" "$APPTAINER_TMPDIR"' EXIT
 # Three attempts, because the registry resets an HTTP/2 stream partway through
 # the base image (`stream error: stream ID 7; INTERNAL_ERROR; received from
 # peer`), and failing a queued job on someone else's reset is expensive.
-step "building env.sif from cluster/env.def"
+step "building $PWD/env.sif; cache: $APPTAINER_CACHEDIR; temporary files: $APPTAINER_TMPDIR"
 for attempt in 1 2 3; do
   if apptainer build --ignore-fakeroot-command --force env.sif cluster/env.def; then
     break
@@ -134,6 +110,10 @@ for attempt in 1 2 3; do
   echo "build failed (attempt $attempt), retrying in 60s" >&2
   sleep 60
 done
+
+# The OCI layers and unpacked image are no longer needed. Remove them before
+# the corpora and GloVe use the same local disk.
+rm -rf "$LOCAL_TMP/apptainer"
 
 # Two checks the queue should not be the place to discover, in one registry
 # build: the keys resolve, and both corpora are on disk.
