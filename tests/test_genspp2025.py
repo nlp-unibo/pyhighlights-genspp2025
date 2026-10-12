@@ -202,12 +202,12 @@ def test_the_toy_corpus_reaches_a_model_as_one_hot(tmp_path):
         task.tokenizer(splits)
         matrix = task._embedding_matrix
 
-        assert matrix.shape == (25, 24)
-        # Row zero is the unknown and padding id, and contributes nothing.
-        assert not matrix[0].any()
-        # Every other row is a distinct basis vector.
-        assert th.equal(matrix[1:].sum(dim=1), th.ones(24))
-        assert th.equal(matrix[1:] @ matrix[1:].T, th.eye(24))
+        assert matrix.shape == (26, 24)
+        # Rows zero and one are the padding and unknown ids, and contribute nothing.
+        assert not matrix[:2].any()
+        # Every character row is a distinct basis vector.
+        assert th.equal(matrix[2:].sum(dim=1), th.ones(24))
+        assert th.equal(matrix[2:] @ matrix[2:].T, th.eye(24))
         # Every column is reachable, where the release's 25 and 26 each
         # leave one and two that nothing can set.
         assert (matrix.sum(dim=0) == 0).sum() == 0
@@ -387,6 +387,29 @@ def test_the_hatexplain_pipeline_folds_classes_before_it_counts_votes(tmp_path):
     assert labels["who cares"] == 0
     assert set(processed["train"]["label"]) <= {0, 1}
     assert processed["val"]["label"].tolist() == [1]
+
+
+def test_a_smoke_baseline_keeps_the_real_run_accelerator(tmp_path):
+    """Smoke shortens training without changing where training runs."""
+    build_registry()
+    task = Registry.from_key(TOY_FR_TASK, save_path=str(tmp_path), **run.SMOKE)
+
+    assert {
+        name: task.trainer_args[name]
+        for name in (
+            "accelerator",
+            "devices",
+            "max_epochs",
+            "limit_train_batches",
+            "limit_val_batches",
+        )
+    } == {
+        "accelerator": "auto",
+        "devices": 1,
+        "max_epochs": 1,
+        "limit_train_batches": 1,
+        "limit_val_batches": 1,
+    }
 
 
 def test_a_smoke_search_is_small_where_trainer_arguments_cannot_reach():

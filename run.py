@@ -38,7 +38,13 @@ MODELS = ("fr", "mgr", "mcd", "grat", "genspp")
 #: writes its files, and not enough to mean anything.
 SMOKE = {
     "seeds": (2023,),
-    "trainer_args": {"max_epochs": 1, "limit_train_batches": 1, "limit_val_batches": 1},
+    "trainer_args": {
+        "accelerator": "auto",
+        "devices": 1,
+        "max_epochs": 1,
+        "limit_train_batches": 1,
+        "limit_val_batches": 1,
+    },
 }
 
 

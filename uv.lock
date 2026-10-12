@@ -487,7 +487,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pyhighlights", specifier = ">=0.12.0,<0.13" },
+    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/cf0b88a96b10581445e8e00f55f3e772f7db84fd.tar.gz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
@@ -1681,8 +1681,8 @@ wheels = [
 
 [[package]]
 name = "pyhighlights"
-version = "0.12.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.13.0"
+source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/cf0b88a96b10581445e8e00f55f3e772f7db84fd.tar.gz" }
 dependencies = [
     { name = "cinnamon-core" },
     { name = "lightning" },
@@ -1691,10 +1691,27 @@ dependencies = [
     { name = "torch" },
     { name = "torchmetrics" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/45/4c/31e8f2d78b8b6e0041ede6dab9c830034006f75a99cd9ee3a55ab697b834/pyhighlights-0.12.0.tar.gz", hash = "sha256:ca557d10bcb97053fc360df52cc063b8351800291c352badaf0dc86d48319bed", size = 228695, upload-time = "2026-09-18T12:05:28.842Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/cb/4a95b2e480346392802698de1eb604d649aebbd06114b1977ca26658a6e2/pyhighlights-0.12.0-py3-none-any.whl", hash = "sha256:9a91ed5a8c7b7141ebc6c3b261c5a5173fbe4761a9dd9d3a85555b849b933369", size = 170005, upload-time = "2026-09-18T12:05:27.408Z" },
+sdist = { hash = "sha256:6baf7815a4a59df514c050a7e7e847fb3673cba77f9a81a315d2f0c9330da2f0" }
+
+[package.metadata]
+requires-dist = [
+    { name = "cinnamon-core", specifier = ">=2.1.3,<3" },
+    { name = "lightning", specifier = ">=2.0.0" },
+    { name = "nox", marker = "extra == 'dev'", specifier = ">=2024.3.2" },
+    { name = "pandas", specifier = ">=2.0.0" },
+    { name = "pydata-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.15" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
+    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
+    { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
+    { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=2.0" },
+    { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=1.0" },
+    { name = "torch", specifier = ">=2.0.0" },
+    { name = "torchmetrics", specifier = ">=1.0.0" },
+    { name = "transformers", marker = "extra == 'transformers'", specifier = ">=4.0.0" },
 ]
+provides-extras = ["transformers", "dev", "docs"]
 
 [[package]]
 name = "pytest"

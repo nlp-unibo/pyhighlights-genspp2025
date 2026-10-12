@@ -13,7 +13,7 @@
 # The image is built on sbuild, never on a login node. `apptainer` exists only
 # on the compute nodes, so nothing containerized runs from a login shell at
 # all (`apptainer: command not found`). This job also builds the registry
-# and fetches the toy corpus, because both need the image.
+# and fetches both corpora, because both need the image.
 #
 #   mkdir -p logs && sbatch cluster/build.sbatch
 #   squeue -u $USER          # then read logs/build_<jobid>.log
@@ -136,19 +136,18 @@ for attempt in 1 2 3; do
 done
 
 # Two checks the queue should not be the place to discover, in one registry
-# build: the keys resolve, and the toy corpus is on disk.
+# build: the keys resolve, and both corpora are on disk.
 #
 # The registry: every key resolves and none is invalid. An invalid key is an
 # experiment missing from the table rather than an error, so it has to be
 # named here. The count is printed rather than pinned: a key added to the
 # reproduction is not a build failure.
 #
-# The toy corpus is fetched from Zenodo and digest-verified now, while there
-# is a person reading the log, rather than by five array jobs at once on a
-# node that may have no outbound network at all. It is read through the
-# registered `dataset` configuration, so the archive, the digest and the split
-# scheme are the ones a run uses rather than a second copy of them here.
-step "building the registry and fetching the toy corpus"
+# Both corpora are fetched now, while there is a person reading the log,
+# rather than by five array jobs at once on nodes that may have no outbound
+# network. Each is read through the registered configuration a run uses. The
+# Toy archive is also digest-verified and split with the paper's scheme.
+step "building the registry and fetching both corpora"
 apptainer exec --nv \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" \
   --env PYTHONPATH="$PWD" \
@@ -163,6 +162,7 @@ from cinnamon.registry import Registry
 import genspp2025
 import pyhighlights
 from genspp2025.configurations.toy.keys import TOY
+from pyhighlights.configurations.keys import HATEXPLAIN
 
 valid, invalid = Registry.build(
     directory=Path(genspp2025.__file__).parent,
@@ -172,8 +172,9 @@ paper = [key for key in valid if key.namespace == "genspp2025"]
 print(f"pyhighlights {pyhighlights.__version__}, {len(paper)} keys registered")
 assert not invalid, sorted(str(key) for key in invalid)
 
-splits = Registry.from_key(TOY).load()
-print({name: len(frame) for name, frame in splits.items()})
+for corpus in (TOY, HATEXPLAIN):
+    splits = Registry.from_key(corpus).load()
+    print(corpus, {name: len(frame) for name, frame in splits.items()})
 PY
 
 if [ -n "$SKIP_GLOVE" ]; then
