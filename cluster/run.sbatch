@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=genspp
-#SBATCH --array=0-4
+#SBATCH --array=0-3
 #SBATCH --partition=l40s
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
@@ -23,17 +23,21 @@
 #
 # Note that 32G is 32768 MB, which is 673 MB more than that node has
 # whether or not a GPU is wanted. `l40s` is the choice among the GPU
-# partitions because it has four nodes to the others' one, so five array
+# partitions because it has four nodes to the others' one, so four array
 # tasks spread rather than queue behind each other; every GPU partition here
 # is far larger than this study needs. Override it per submission with
 # `sbatch --partition=<name> cluster/run.sbatch ...`.
 
-# One job per model, five per corpus. The argument picks the corpus:
+# One GPU job per baseline, four per corpus. GenSPP's CPU search has its own
+# wrapper so it does not reserve an idle GPU. The argument picks the corpus:
 #
 #   mkdir -p logs
-#   sbatch --array=0 cluster/run.sbatch toy --smoke   # minutes, says it builds
-#   sbatch cluster/run.sbatch toy                     # the five Toy cells
-#   sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
+#   sbatch cluster/run.sbatch toy --smoke              # four baseline smokes
+#   sbatch cluster/run-genspp.sbatch toy --smoke       # GenSPP smoke
+#   sbatch cluster/run.sbatch toy                      # four Toy baselines
+#   sbatch cluster/run-genspp.sbatch toy               # Toy GenSPP
+#   sbatch cluster/run.sbatch hatexplain               # four HateXplain baselines
+#   sbatch cluster/run-genspp.sbatch hatexplain        # HateXplain GenSPP
 #
 # Why the model and not the corpus or the seed. A task runs its five seeds
 # itself and writes them into one `results.json`; five per-seed jobs would
@@ -52,14 +56,13 @@
 # for a baseline cell. That left two hours of margin. 0.13.0 scores the
 # candidates in worker processes rather than on threads and the cell has not
 # been timed since, so the margin is expected to be larger and is not yet
-# known. Watch the first cell: nothing here resumes, `results.json` is written
-# once after the last seed, and a cell killed on its fifth seed loses all
-# five.
+# known. Watch the first cell: `results.json` is updated after every seed, but
+# nothing resumes, so a cell still has to finish all five inside one job to
+# produce the complete table row.
 #
-# Nothing here resumes. A job that dies leaves the cells it finished on disk
-# and the rest undone; delete that model's results directory and resubmit its
-# array index (`sbatch --array=4 cluster/run.sbatch toy`), so a table is not
-# read off a half-finished tree beside a finished one.
+# A job that dies leaves its completed seeds on disk under `completed`. Delete
+# that model's partial results directory and resubmit its array index, or
+# `run-genspp.sbatch` for GenSPP, because resubmitting starts every seed again.
 
 set -euo pipefail
 
@@ -121,14 +124,9 @@ collect() {
 }
 trap collect EXIT
 
-# The corpora come with the job rather than being read off scratch a record at
-# a time: `build.sbatch` stages the toy corpus there, and this copies the
-# cache across in one pass: single-digit megabytes, against a run that would
-# otherwise read it over the network share.
-#
-# HateXplain is not staged by the build, so its thirteen megabytes are fetched
-# by each job that wants them. Five downloads rather than one, which is the
-# price of not sharing a cache between five jobs that run at once.
+# The corpora come with the job rather than being downloaded by every array
+# task or read off scratch a record at a time: `build.sbatch` stages both, and
+# this copies the cache across in one pass.
 #
 # `PYHIGHLIGHTS_CACHE` and not `XDG_CACHE_HOME`, which the library does not
 # read: it caches under `Path.home() / ".cache" / "pyhighlights"` unless that
@@ -136,9 +134,8 @@ trap collect EXIT
 # container, so an unset variable puts corpora in a home directory that has a
 # quota and has already been filled once by caches.
 #
-# Not copied back. Five array jobs writing one cache is a race nothing here
-# arbitrates, and a corpus `build.sbatch` did not stage is one download per
-# job rather than one corrupted archive for all five.
+# Not copied back. Concurrent jobs writing one cache is a race nothing here
+# arbitrates; `build.sbatch` stages both corpora before any run starts.
 mkdir -p "$WORK/cache"
 if [ -d "$SCRATCH/cache/pyhighlights" ]; then
   cp -a "$SCRATCH/cache/pyhighlights" "$WORK/cache/"
@@ -154,8 +151,16 @@ fi
 # limit rather than the cores, measured on a running search at 78 threads and
 # 240% of a possible 800%, and this job set one thread per candidate to
 # compensate.
+#
+# GPU baseline jobs expose CUDA. The CPU-only GenSPP wrapper disables `--nv`
+# as well as omitting a GPU request.
 
-apptainer exec --nv \
+APPTAINER_GPU=()
+if [ "${PYHIGHLIGHTS_USE_GPU:-1}" = "1" ]; then
+  APPTAINER_GPU=(--nv)
+fi
+
+apptainer exec "${APPTAINER_GPU[@]}" \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" --bind "$WORK:$WORK" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \

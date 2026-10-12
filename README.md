@@ -75,17 +75,20 @@ uv run python run.py toy --model genspp --released-threshold --results results-r
 ## Cluster
 
 Submit from the repository root.
-Neither job sets `--chdir`, so each runs in the directory it was submitted
+The jobs set no `--chdir`, so each runs in the directory it was submitted
 from.
-Both stage into `$SCRATCH`, which defaults to `/scratch.hpc/$USER` and can be
+They stage into `$SCRATCH`, which defaults to `/scratch.hpc/$USER` and can be
 set to any other path before submitting.
 
 ```bash
 mkdir -p logs
-sbatch cluster/build.sbatch                       # image, registry, corpus, GloVe
-sbatch --array=0 cluster/run.sbatch toy --smoke   # says every cell builds
-sbatch cluster/run.sbatch toy                     # the five Toy cells
-sbatch cluster/run.sbatch hatexplain              # the five HateXplain cells
+sbatch cluster/build.sbatch                       # image, registry, corpora, GloVe
+sbatch cluster/run.sbatch toy --smoke             # four baseline smokes on GPU
+sbatch cluster/run-genspp.sbatch toy --smoke      # GenSPP smoke on CPU
+sbatch cluster/run.sbatch toy                     # four Toy baselines
+sbatch cluster/run-genspp.sbatch toy              # Toy GenSPP
+sbatch cluster/run.sbatch hatexplain              # four HateXplain baselines
+sbatch cluster/run-genspp.sbatch hatexplain       # HateXplain GenSPP
 python compare.py --results results
 ```
 
@@ -95,12 +98,14 @@ From the paper's appendix, a seed takes ~8 min for a baseline on Toy and
 ~36 min for GenSPP, ~4 and ~78 on HateXplain.
 The four cheap cells of a corpus therefore do not wait behind its slow one.
 
-`run.sbatch` names `--partition=l40s`, since the cluster's default `sbuild` is
-the image builder and has no GPU.
-Override it per submission with `sbatch --partition=<name>
-cluster/run.sbatch ...`.
+`run.sbatch` sends the four baselines to `l40s`, where they train on GPU.
+`run-genspp.sbatch` sends the genetic search to the CPU-only `sbuild`
+partition, because its eight candidates run in forked CPU workers and cannot
+share a CUDA context that way. Override either partition per submission with
+`sbatch --partition=<name> cluster/<script> ...` after checking live cluster
+state.
 
-`build.sbatch` builds the image from `cluster/env.def`, stages the toy corpus
+`build.sbatch` builds the image from `cluster/env.def`, stages both corpora
 under `$SCRATCH/cache/pyhighlights`, and fetches GloVe once for HateXplain.
 `sbatch cluster/build.sbatch --skip-glove` stops before that 1.4 GB file, and
 a later submission picks it up.
@@ -111,10 +116,12 @@ ends, however it ends.
 The search is a population of 50 over 100 generations at a selection rate of
 0.5.
 That is 5050 candidates trained per seed.
-Nothing resumes and `results.json` is written once after the last seed, so a
-cell killed on its fifth loses all five.
-`--time=24:00:00` is the cluster's ceiling, and a GenSPP cell has to finish
-inside it.
+`results.json` is updated after every finished seed, so an interrupted cell
+keeps completed seeds and names them under `completed`. Runs cannot resume yet:
+resubmitting starts every seed again. That is tracked in
+[pyhighlights issue 134](https://github.com/nlp-unibo/pyhighlights/issues/134).
+`--time=24:00:00` is the cluster's ceiling, and all five seeds of a GenSPP
+cell have to finish inside it because a later job cannot resume them.
 
 ## Results
 
