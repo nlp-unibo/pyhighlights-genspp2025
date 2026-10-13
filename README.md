@@ -98,12 +98,11 @@ From the paper's appendix, a seed takes ~8 min for a baseline on Toy and
 ~36 min for GenSPP, ~4 and ~78 on HateXplain.
 The four cheap cells of a corpus therefore do not wait behind its slow one.
 
-`run.sbatch` sends the four baselines to `l40s`, where they train on GPU.
-`run-genspp.sbatch` sends the genetic search to the CPU-only `sbuild`
-partition, because its eight candidates run in forked CPU workers and cannot
-share a CUDA context that way. Override either partition per submission with
-`sbatch --partition=<name> cluster/<script> ...` after checking live cluster
-state.
+Both run scripts use `l40s`. The baseline array requests one GPU per job;
+`run-genspp.sbatch` does not, because its eight candidates run in forked CPU
+workers and cannot share a CUDA context that way. Override either partition
+per submission with `sbatch --partition=<name> cluster/<script> ...` after
+checking live cluster state.
 
 `build.sbatch` builds the image from `cluster/env.def`, stages both corpora
 under `$SCRATCH/cache/pyhighlights`, and fetches GloVe once for HateXplain.
