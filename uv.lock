@@ -202,16 +202,16 @@ wheels = [
 
 [[package]]
 name = "cinnamon-core"
-version = "2.1.3"
+version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/00/d3/89b5c3ca78fc336b3c3f4b79087260ba842b64bceb5b0bcd727c1b9edca5/cinnamon_core-2.1.3.tar.gz", hash = "sha256:f3a9465bbc5620222d23462d8a37b51c7bcda805985020fac4f7ba4ff749e2f0", size = 123608, upload-time = "2026-09-13T16:01:10.736Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/c5/35/2fb9d80703dc5e98fb767ffa374db3d9bdcb2baeb34eebc460d017365186/cinnamon_core-2.2.1.tar.gz", hash = "sha256:9a46c6ddcefd23528db2a51bab6c67bf619d66297a2d55cde32b7516cddd4868", size = 129216, upload-time = "2026-09-30T16:09:45.435Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/02/69/96618cac28601cc22abd4344e143adaff6b3c1b6d0cd3f828cbc9bda4de8/cinnamon_core-2.1.3-py3-none-any.whl", hash = "sha256:fd14cafa415f3fefad19fd89548173d4ce60f5e53c4c4cc9447295c7c287fb72", size = 64124, upload-time = "2026-09-13T16:01:09.283Z" },
+    { url = "https://files.pythonhosted.org/packages/20/d3/a85697902d4e40f9daa8f26f652cc019da6667123abe77dc55e89c1f6a62/cinnamon_core-2.2.1-py3-none-any.whl", hash = "sha256:e06a76a9b4bb5e164e9156e76911d7988ef14e8a17e67c6c7a5f89092eaa49f1", size = 66142, upload-time = "2026-09-30T16:09:43.683Z" },
 ]
 
 [[package]]
@@ -487,7 +487,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/cf0b88a96b10581445e8e00f55f3e772f7db84fd.tar.gz" },
+    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/3519758b89f5c4a34f0423d6e93a5e7d67b533a1.tar.gz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
@@ -1682,22 +1682,26 @@ wheels = [
 [[package]]
 name = "pyhighlights"
 version = "0.13.0"
-source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/cf0b88a96b10581445e8e00f55f3e772f7db84fd.tar.gz" }
+source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/3519758b89f5c4a34f0423d6e93a5e7d67b533a1.tar.gz" }
 dependencies = [
     { name = "cinnamon-core" },
     { name = "lightning" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "numpy", version = "2.5.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "torch" },
     { name = "torchmetrics" },
 ]
-sdist = { hash = "sha256:6baf7815a4a59df514c050a7e7e847fb3673cba77f9a81a315d2f0c9330da2f0" }
+sdist = { hash = "sha256:533bfa55f6064c102dc47f1bd30d88d5338b4d1bdfb225b57609aa373c99eb4f" }
 
 [package.metadata]
 requires-dist = [
-    { name = "cinnamon-core", specifier = ">=2.1.3,<3" },
+    { name = "cinnamon-core", specifier = ">=2.2.1,<3" },
     { name = "lightning", specifier = ">=2.0.0" },
     { name = "nox", marker = "extra == 'dev'", specifier = ">=2024.3.2" },
+    { name = "numpy", specifier = ">=1.21.0" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pydata-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.15" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
