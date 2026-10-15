@@ -14,9 +14,9 @@ SEEDS = [2023, 15451, 1337, 2001, 2080]
 #: Candidates a genetic search scores at once, one per worker, as the release's
 #: own pool does and as ``cluster/run.sbatch`` allocates
 #: (``--cpus-per-task=8``). Every entry is a CPU device, which is what lets
-#: pyhighlights 0.13.0 score them in forked worker processes: a CUDA context
-#: cannot be inherited across a fork, so one CUDA device here would put the
-#: search back on threads. It buys less than eight times the speed, since a
+#: pyhighlights score them in spawned worker processes: the search uses
+#: processes only when every device is a CPU, so one CUDA device here would put
+#: the search back on threads. It buys less than eight times the speed, since a
 #: candidate is small and most of its cost is the training loop stepping from
 #: Python. The library measured sixteen candidates of the toy search on a
 #: 24-core machine at 1442 ms a candidate sequentially, 832 ms on eight

@@ -99,8 +99,9 @@ From the paper's appendix, a seed takes ~8 min for a baseline on Toy and
 The four cheap cells of a corpus therefore do not wait behind its slow one.
 
 Both run scripts use `l40s`. The baseline array requests one GPU per job;
-`run-genspp.sbatch` does not, because its eight candidates run in forked CPU
-workers and cannot share a CUDA context that way. Override either partition
+`run-genspp.sbatch` does not, because its eight candidates run in spawned CPU
+worker processes, and the search uses processes only when every device is a
+CPU. Override either partition
 per submission with `sbatch --partition=<name> cluster/<script> ...` after
 checking live cluster state.
 
@@ -165,8 +166,8 @@ for a baseline it is the seed's own wall clock.
 
 `memory/peak` is what a machine has to have for the seed, not what one model
 uses.
-It is not the sum of the workers, since summing would count a forked page once
-per worker that never wrote to it.
+It is not the sum of the workers, since summing would count the shared corpus
+storage once per worker.
 There is no per-model memory to divide out either.
 
 An entry reads `-` where a model has not been run, or where the tree predates
