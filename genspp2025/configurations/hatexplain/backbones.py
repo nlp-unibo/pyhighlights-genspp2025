@@ -42,3 +42,5 @@ class HateXplainBackboneConfig(GRUBackboneConfig):
 )
 class HateXplainGenSPPBackboneConfig(HateXplainBackboneConfig):
     bidirectional: bool = Param(False)
+    #: The released GenSPP encoder passes the GRU states on unnormalised.
+    layer_norm: bool = Param(False)
