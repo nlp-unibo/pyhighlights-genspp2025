@@ -32,7 +32,7 @@ dependencies = [
     # spawned worker processes, and lets the GenSPP backbones leave out layer
     # normalisation. Pin the commit because these changes have not been
     # released.
-    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/3519758b89f5c4a34f0423d6e93a5e7d67b533a1.tar.gz",
+    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/07cbc16d0736f5ec4ae60239686b1676d99d482b.tar.gz",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
