@@ -8,8 +8,13 @@ from cinnamon.registry import RegistrationKey
 
 NAMESPACE = "genspp2025"
 
-#: The five seeds every reported number averages over.
+#: The five seeds every baseline number averages over, which are the ones the
+#: release's baselines use.
 SEEDS = [2023, 15451, 1337, 2001, 2080]
+
+#: The five seeds every GenSPP number averages over. The release's ``train.py``
+#: seeds run ``i`` with ``i + 1``, on both corpora.
+GENSPP_SEEDS = [1, 2, 3, 4, 5]
 
 #: Candidates a genetic search scores at once, one per worker, as the release's
 #: own pool does and as ``cluster/run.sbatch`` allocates

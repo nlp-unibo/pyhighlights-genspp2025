@@ -24,6 +24,7 @@ from pyhighlights.configurations.keys import (
 from pyhighlights.utility.metrics import BoundMetric
 
 from genspp2025.configurations.keys import (
+    GENSPP_SEEDS,
     NAMESPACE,
     PAPER_CHECKPOINT,
     PAPER_EARLY_STOPPING,
@@ -109,7 +110,8 @@ class PaperGenSPPTaskConfig(Configuration):
     preprocessor: RegistrationKey[Preprocessor] | None = Param(None)
     val_metrics: List[RegistrationKey[BoundMetric]] = Param(BINARY_METRICS)
     test_metrics: List[RegistrationKey[BoundMetric]] = Param(BINARY_METRICS)
-    seeds: Sequence[int] = Param(SEEDS)
+    #: The release's GenSPP seeds, which differ from its baselines' seeds.
+    seeds: Sequence[int] = Param(GENSPP_SEEDS)
     batch_size: int = Param(64, ge=1)
     save_path: str | None = Param(None)
     trainer_args: Dict[str, Any] = Param({"accelerator": "auto", "devices": 1})

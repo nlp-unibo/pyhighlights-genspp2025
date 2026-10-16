@@ -298,11 +298,11 @@ HateXplain has no designed evidence to check a selection against.
 ## Reproducibility
 
 Table 1 reproduces.
-It runs all five models on both corpora, over the seeds
-`[2023, 15451, 1337, 2001, 2080]`.
+It runs all five models on both corpora over five seeds.
 The paper reports five seed runs and does not list their seeds.
-These seeds are the ones the release's baselines use, and this reproduction
-uses them for GenSPP as well.
+The baselines use `[2023, 15451, 1337, 2001, 2080]`, which are the seeds of
+the release's baselines.
+GenSPP uses 1 to 5, which are the seeds of the release's genetic code.
 The four columns it reports are macro F1, token-level highlight F1, selection
 rate and selection size.
 
@@ -323,9 +323,8 @@ baseline, and nothing here computes them.
 This reproduction was checked against the reference implementation file by
 file, and the corpora, the training settings and the search parameters match
 it.
-Six differences remain.
-Three are in how the data is prepared, two are in how the search runs, and one
-is in the seeds.
+Five differences remain.
+Three are in how the data is prepared, and two are in how the search runs.
 The table below is complete, so nothing outside it differs.
 Each row is documented at the point it matters, in the configurations and in
 the library's `docsrc/source/benchmarks.rst`.
@@ -335,9 +334,8 @@ the library's `docsrc/source/benchmarks.rst`.
 | HateXplain source | Parsed from upstream, 13507 rows, every one agreeing with the release on tokens, label and highlight | Read from the release's own pickles |
 | Split scheme | One scheme serves all five models, so the five numbers are comparable to each other | A scheme per model |
 | Validation rows | Held out of training | Trained on, by the genetic code |
-| Batch order | One order per search, seen by every candidate | An order per candidate |
+| Batch order | Reshuffled at every epoch, seeded by a hash of the chromosome | Reshuffled at every epoch by the global generator |
 | Mutation | Uniform at 0.05, which explores the selector's decision threshold at 71% of the release's rate | Half that rate at the threshold |
-| Seeds | `[2023, 15451, 1337, 2001, 2080]` for every model | The same for the baselines, and 1 to 5 for GenSPP |
 
 ## Corpora
 
