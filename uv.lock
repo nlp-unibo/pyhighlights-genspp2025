@@ -487,7 +487,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/07cbc16d0736f5ec4ae60239686b1676d99d482b.tar.gz" },
+    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/bd0ad26b8393a7b7d87bd83fc45d670306c0b96c.tar.gz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
@@ -1682,7 +1682,7 @@ wheels = [
 [[package]]
 name = "pyhighlights"
 version = "0.13.0"
-source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/07cbc16d0736f5ec4ae60239686b1676d99d482b.tar.gz" }
+source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/bd0ad26b8393a7b7d87bd83fc45d670306c0b96c.tar.gz" }
 dependencies = [
     { name = "cinnamon-core" },
     { name = "lightning" },
@@ -1694,7 +1694,7 @@ dependencies = [
     { name = "torch" },
     { name = "torchmetrics" },
 ]
-sdist = { hash = "sha256:ce1c8dff646f0fa21d6dd22f6eba1bfc5ad5758531a662f367bf0ac13ee80de4" }
+sdist = { hash = "sha256:60f11574fdf3ce036a3167636d4a618508b7965db8f47ba7dd19ecd36131c378" }
 
 [package.metadata]
 requires-dist = [

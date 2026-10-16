@@ -28,7 +28,7 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_SPARSITY,
     HATEXPLAIN_SPARSITY_LOSS,
 )
-from genspp2025.configurations.keys import SEEDS
+from genspp2025.configurations.keys import GENSPP_SEEDS, SEEDS
 from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
@@ -87,6 +87,9 @@ def test_the_released_hyperparameters_are_what_is_registered():
 
     task = Registry.from_key(TOY_FR_TASK)
     assert task.seeds == SEEDS == [2023, 15451, 1337, 2001, 2080]
+    for key in (TOY_GENSPP_TASK, HATEXPLAIN_GENSPP_TASK):
+        config = Registry.retrieve_configuration(registration_key=key)
+        assert config.seeds == GENSPP_SEEDS == [1, 2, 3, 4, 5]
     assert task.batch_size == 64
     # The paper's patience is the reproduction's own registration, not the
     # library's default of five.
