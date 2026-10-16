@@ -32,6 +32,7 @@ Paper's configurations are provided and registered in this repository.
 | `genspp2025/configurations/` | the paper's values, one module per kind of thing, one package per corpus |
 | `published.py` | Tables 1 and 2, transcribed. Nothing computed |
 | `compare.py` | a results tree beside those numbers, and what it cost to produce |
+| `selection.py` | what the selections of trained Toy models contain |
 | `run.py` | run one cell, or a corpus's five |
 | `cluster/` | the Slurm jobs, and the image they build |
 
@@ -46,7 +47,7 @@ uv venv && uv pip install -e ".[dev]"
 ## Usage
 
 ```bash
-uv run pytest                        # 17 tests, seconds
+uv run pytest                        # 19 tests, seconds
 uv run python run.py toy --smoke     # one seed, one batch, minutes
 ```
 
@@ -173,11 +174,135 @@ There is no per-model memory to divide out either.
 An entry reads `-` where a model has not been run, or where the tree predates
 the library reporting costs.
 
+### Toy: GenSPP beside its release
+
+The reference implementation was rerun on Toy at commit `2b447a2`, with its
+own configuration and its own seeds, 1 to 5.
+The rerun used the versions that its `genetic/requirements.txt` pins, which
+are torch 2.3.1 and numpy 2.0.0, on an L40S GPU.
+The `cluster` branch of the reference repository holds the Slurm jobs that
+ran it.
+The reproduction row comes from pyhighlights `3519758`.
+Every entry is a mean and a sample standard deviation over five seeds.
+Clf-F1 is macro F1, Hl-F1 is token-level highlight F1, and R is the selection
+rate, all in percent.
+
+| GenSPP on Toy | Clf-F1 | Hl-F1 | R |
+|---|---|---|---|
+| Published | 99.00 ± 0.25 | 76.02 ± 0.64 | 11.47 ± 0.49 |
+| Release, rerun | 99.61 ± 0.23 | 69.96 ± 0.70 | 9.94 ± 0.27 |
+| This reproduction | 99.51 ± 0.45 | 67.48 ± 4.24 | 8.73 ± 0.59 |
+
+The release does not reach the published highlight F1 either.
+Its rerun is 6.1 points below the published value.
+The released GenSPP code was last changed in August 2024.
+This repository cannot tell whether the published numbers came from that code
+under other seeds or another environment, or from an earlier version.
+
+The reproduction is 2.5 points below the release.
+Its standard deviation is six times larger, while the release matches the
+published spread.
+The two also stop at different points of the same fitness.
+The release ends its searches at a best objective between 0.059 and 0.071,
+and the reproduction between 0.053 and 0.058, where lower is better.
+Once the task loss is below its limit, the fitness prefers the sparser of two
+selections.
+The reproduction therefore selects fewer characters, which lowers recall and
+with it the highlight F1.
+
+### Toy: what the selections contain
+
+The Toy corpus is built so that only the whole highlight determines the class.
+Each class has one highlight, `aba`, `baa` or `abc`, and every text is
+contaminated with fragments of the other two.
+`selection.py` checks whether the test selections of trained models contain
+that evidence.
+It uses two measures, and neither consults the model's own predictor.
+
+The complete-highlight rate is the share of test examples whose selection
+contains the whole gold highlight.
+In the positional view, every gold position has to be selected.
+Additionally, no other class highlight may appear as a contiguous run of
+selected characters.
+The string view keeps the selected characters in text order without their
+positions.
+It is the only view available for the release, whose masks files store no
+positions.
+
+The complete-highlight rate is not the `sufficiency` of
+`pyhighlights.components.faithfulness`.
+That measure follows ERASER and compares the model's own predictions with and
+without the rest of the input.
+A predictor that has learned to decode a label from a partial selection then
+reports that selection as sufficient.
+The complete-highlight rate asks the corpus instead.
+
+| Toy, test split | Own accuracy | Complete, positional | Complete, string |
+|---|---|---|---|
+| FR | 96.37 ± 6.50 | 11.31 ± 14.75 | 11.46 ± 14.68 |
+| MGR | 99.45 ± 0.49 | 9.86 ± 10.58 | 10.02 ± 10.60 |
+| MCD | 98.76 ± 1.95 | 22.63 ± 16.33 | 22.93 ± 16.41 |
+| G-RAT | 99.86 ± 0.18 | 29.38 ± 27.45 | 29.41 ± 27.44 |
+| GenSPP | 99.51 ± 0.45 | 3.17 ± 1.07 | 3.97 ± 1.08 |
+| GenSPP, release rerun | 99.61 ± 0.23 | - | 6.59 ± 0.43 |
+
+Every model classifies at 96% or above, while at most 29% of its selections
+contain the evidence.
+The predictors therefore decode the label from something other than the whole
+highlight.
+The two views differ by less than one point, so selections that spell a
+highlight by accident are rare.
+
+`python selection.py --per-class` shows what the selections contain.
+GenSPP selects a short code for each class in all of its runs.
+In the reproduction, `abc` is marked by a lone `b` in 83% to 90% of its test
+examples, and `aba` by `ba` in 83% to 86%.
+Three runs mark `baa` by `aa` in about 81% of its examples, and two runs mark
+it by a lone `a` in 60% and 68%.
+The release uses the same code, with `b` in 72% to 82%, `ba` in 65% to 78% and
+`aa` in 64% to 75%.
+A lone `b` occurs in every highlight, so it is no evidence for `abc`.
+
+The baselines mostly mark a class by the size of the selection.
+In 18 of their 20 runs, one class is selected as a single character in at
+least 90% of its test examples.
+That character is often outside the highlight.
+The other two classes receive three to five characters, which keeps the
+average selection size near the sparsity target of three.
+
+The contamination rule therefore protects only against a predictor that has to
+find the highlight itself.
+A generator reads the whole text, so it can locate the highlight and pass on
+any selection that names the class.
+Highlight F1 and the complete-highlight rate measure different things as a
+result.
+Highlight F1 gives partial credit for partial overlap, while the
+complete-highlight rate scores a selection as either complete or not.
+Across the 20 baseline runs, the Pearson correlation between the two is 0.69.
+GenSPP lies outside that trend, with a highlight F1 between 0.62 and 0.71 and
+a complete-highlight rate between 2% and 5%.
+It ranks first on highlight F1 and last on the complete-highlight rate.
+
+The script also trains five independent readers per view.
+Each reader is a GRU trained on windows of the training texts that contain the
+gold highlight.
+Its accuracy on a model's selections is not reported as a result.
+Codes such as a lone `b` never occur in its training data, so each reader maps
+them arbitrarily.
+On GenSPP's selections, reader accuracy ranges from 36% to 87% across the
+five reader seeds.
+
+These results cover Toy alone.
+HateXplain has no designed evidence to check a selection against.
+
 ## Reproducibility
 
 Table 1 reproduces.
-It runs all five models on both corpora, over the paper's five seeds
+It runs all five models on both corpora, over the seeds
 `[2023, 15451, 1337, 2001, 2080]`.
+The paper reports five seed runs and does not list their seeds.
+These seeds are the ones the release's baselines use, and this reproduction
+uses them for GenSPP as well.
 The four columns it reports are macro F1, token-level highlight F1, selection
 rate and selection size.
 
@@ -198,8 +323,9 @@ baseline, and nothing here computes them.
 This reproduction was checked against the reference implementation file by
 file, and the corpora, the training settings and the search parameters match
 it.
-Five differences remain, three of them in how the data is prepared and two in
-how the search runs.
+Six differences remain.
+Three are in how the data is prepared, two are in how the search runs, and one
+is in the seeds.
 The table below is complete, so nothing outside it differs.
 Each row is documented at the point it matters, in the configurations and in
 the library's `docsrc/source/benchmarks.rst`.
@@ -211,6 +337,7 @@ the library's `docsrc/source/benchmarks.rst`.
 | Validation rows | Held out of training | Trained on, by the genetic code |
 | Batch order | One order per search, seen by every candidate | An order per candidate |
 | Mutation | Uniform at 0.05, which explores the selector's decision threshold at 71% of the release's rate | Half that rate at the threshold |
+| Seeds | `[2023, 15451, 1337, 2001, 2080]` for every model | The same for the baselines, and 1 to 5 for GenSPP |
 
 ## Corpora
 

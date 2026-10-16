@@ -566,3 +566,17 @@ def test_a_parameter_count_keeps_the_spread_the_seeds_had():
 
     assert compare.shown((2_574_148.0, 12_000.0), "parameters") == "2.57M ± 12.0k"
     assert compare.shown((999_990.0, 0.0), "parameters") == "1.00M"
+
+
+def test_a_complete_highlight_needs_every_gold_character_and_no_rival():
+    import selection
+
+    assert selection.complete_in_string("xabay", "aba")
+    assert not selection.complete_in_string("ba", "aba")
+    assert not selection.complete_in_string("abaabc", "aba")
+    # Positions: "a_ba" spells no run of "aba", and a rival needs a whole run.
+    assert selection.complete_in_view("__aba__", [2, 3, 4], "aba")
+    assert not selection.complete_in_view("__a_ba_", [2, 4, 5], "aba")
+    # A fragment of another highlight is not a rival.
+    assert selection.complete_in_view("_ab_aba", [4, 5, 6], "aba")
+    assert not selection.complete_in_view("abcaba_", [3, 4, 5], "aba")
