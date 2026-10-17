@@ -182,7 +182,8 @@ The rerun used the versions that its `genetic/requirements.txt` pins, which
 are torch 2.3.1 and numpy 2.0.0, on an L40S GPU.
 The `cluster` branch of the reference repository holds the Slurm jobs that
 ran it.
-The reproduction row comes from pyhighlights `3519758`.
+The reproduction row comes from pyhighlights `bd0ad26`, over the same seeds
+1 to 5.
 Every entry is a mean and a sample standard deviation over five seeds.
 Clf-F1 is macro F1, Hl-F1 is token-level highlight F1, and R is the selection
 rate, all in percent.
@@ -191,7 +192,7 @@ rate, all in percent.
 |---|---|---|---|
 | Published | 99.00 ± 0.25 | 76.02 ± 0.64 | 11.47 ± 0.49 |
 | Release, rerun | 99.61 ± 0.23 | 69.96 ± 0.70 | 9.94 ± 0.27 |
-| This reproduction | 99.51 ± 0.45 | 67.48 ± 4.24 | 8.73 ± 0.59 |
+| This reproduction | 99.54 ± 0.31 | 65.09 ± 4.42 | 8.36 ± 0.97 |
 
 The release does not reach the published highlight F1 either.
 Its rerun is 6.1 points below the published value.
@@ -199,16 +200,44 @@ The released GenSPP code was last changed in August 2024.
 This repository cannot tell whether the published numbers came from that code
 under other seeds or another environment, or from an earlier version.
 
-The reproduction is 2.5 points below the release.
-Its standard deviation is six times larger, while the release matches the
-published spread.
-The two also stop at different points of the same fitness.
-The release ends its searches at a best objective between 0.059 and 0.071,
-and the reproduction between 0.053 and 0.058, where lower is better.
+The reproduction is 4.9 points below the release, and its standard deviation
+is six times larger.
+The spread comes from which code the search finds.
+Every run selects a short code per class rather than the highlight, as the
+next section shows.
+The codes differ only in length.
+
+| Seed | `aba` | `baa` | `abc` | Characters | Hl-F1 | R |
+|---|---|---|---|---|---|---|
+| 1 | `ba` | `a` | `b` | 4 | 60.82 | 7.54 |
+| 3 | `ba` | `a` | `b` | 4 | 62.18 | 7.64 |
+| 5 | `ba` | `a` | `b` | 4 | 62.77 | 7.79 |
+| 2 | `ba` | `a` | `bc` | 5 | 69.24 | 9.50 |
+| 4 | `ba` | `aa` | `b` | 5 | 70.46 | 9.32 |
+
+A five-character code overlaps the gold highlight on one more character than
+a four-character code.
+That character is worth about seven points of highlight F1.
 Once the task loss is below its limit, the fitness prefers the sparser of two
-selections.
-The reproduction therefore selects fewer characters, which lowers recall and
-with it the highlight F1.
+selections, so the four-character code is the better optimum of the search.
+The highlight F1 is therefore lower in exactly the runs where the search
+reaches a better fitness.
+
+The release selects the five-character code `ba`, `aa` and `b` in all five of
+its runs.
+The reproduction found the four-character code in 8 of 15 runs: 3 of 5 here,
+and 2 and 3 of 5 in two earlier runs at pyhighlights `07cbc16`.
+Those two runs used the seeds `[2023, 15451, 1337, 2001, 2080]`, one at the
+paper's mutation rate and one at the release's threshold rate.
+The threshold rate and the batch order fixed in `bd0ad26` therefore do not
+explain the difference.
+Two differences in the table at the end of this README could explain it, and
+neither has been tested.
+The release trains each candidate's predictor on the validation rows as well,
+which this reproduction treats as an error and does not do.
+Its batch order also comes from one generator seeded once per run, so a
+candidate's batches depend on when it is evaluated rather than on its
+chromosome.
 
 ### Toy: what the selections contain
 
@@ -243,7 +272,7 @@ The complete-highlight rate asks the corpus instead.
 | MGR | 99.45 ± 0.49 | 9.86 ± 10.58 | 10.02 ± 10.60 |
 | MCD | 98.76 ± 1.95 | 22.63 ± 16.33 | 22.93 ± 16.41 |
 | G-RAT | 99.86 ± 0.18 | 29.38 ± 27.45 | 29.41 ± 27.44 |
-| GenSPP | 99.51 ± 0.45 | 3.17 ± 1.07 | 3.97 ± 1.08 |
+| GenSPP | 99.54 ± 0.32 | 2.24 ± 0.92 | 2.78 ± 1.23 |
 | GenSPP, release rerun | 99.61 ± 0.23 | - | 6.59 ± 0.43 |
 
 Every model classifies at 96% or above, while at most 29% of its selections
@@ -255,10 +284,12 @@ highlight by accident are rare.
 
 `python selection.py --per-class` shows what the selections contain.
 GenSPP selects a short code for each class in all of its runs.
-In the reproduction, `abc` is marked by a lone `b` in 83% to 90% of its test
-examples, and `aba` by `ba` in 83% to 86%.
-Three runs mark `baa` by `aa` in about 81% of its examples, and two runs mark
-it by a lone `a` in 60% and 68%.
+In the reproduction, `aba` is marked by `ba` in 81% to 88% of its test
+examples.
+Four runs mark `abc` by a lone `b` in 87% to 94% of its examples, and one run
+marks it by `bc` in 86%.
+Four runs mark `baa` by a lone `a` in 68% to 77% of its examples, and one run
+marks it by `aa` in 80%.
 The release uses the same code, with `b` in 72% to 82%, `ba` in 65% to 78% and
 `aa` in 64% to 75%.
 A lone `b` occurs in every highlight, so it is no evidence for `abc`.
@@ -279,8 +310,8 @@ result.
 Highlight F1 gives partial credit for partial overlap, while the
 complete-highlight rate scores a selection as either complete or not.
 Across the 20 baseline runs, the Pearson correlation between the two is 0.69.
-GenSPP lies outside that trend, with a highlight F1 between 0.62 and 0.71 and
-a complete-highlight rate between 2% and 5%.
+GenSPP lies outside that trend, with a highlight F1 between 0.61 and 0.70 and
+a mean complete-highlight rate of 2.24%.
 It ranks first on highlight F1 and last on the complete-highlight rate.
 
 The script also trains five independent readers per view.
@@ -289,8 +320,8 @@ gold highlight.
 Its accuracy on a model's selections is not reported as a result.
 Codes such as a lone `b` never occur in its training data, so each reader maps
 them arbitrarily.
-On GenSPP's selections, reader accuracy ranges from 36% to 87% across the
-five reader seeds.
+On GenSPP's selections, reader accuracy ranges from 21% to 76% across the
+five reader seeds and both views.
 
 These results cover Toy alone.
 HateXplain has no designed evidence to check a selection against.
