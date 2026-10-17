@@ -5,6 +5,7 @@ Usage::
     python selection.py --results results
     python selection.py --results results --release <gen-spp>/genetic/results/outputs
     python selection.py --results results --per-class
+    python selection.py --release <outputs> --release-name toy_probe-noval --per-class
 
 The Toy corpus is designed so that a class is determined only by its whole
 highlight, one of ``aba``, ``baa`` and ``abc``. This script checks whether a
@@ -194,9 +195,16 @@ def reproduction(results: Path, splits) -> Iterator[Selections]:
             )
 
 
-def release(outputs: Path) -> Iterator[Selections]:
-    """The reference implementation's ``masks_toy_<seed>.txt`` files."""
-    for path in sorted(outputs.glob("masks_toy_[0-9]*.txt")):
+def release(outputs: Path, name: str = "toy") -> Iterator[Selections]:
+    """The reference implementation's ``masks_<name>_<seed>.txt`` files.
+
+    ``name`` is ``toy`` for the release as published, and
+    ``toy_probe-<arm>`` for a run of its variance probe branch.
+    """
+    model = "genspp-release"
+    if name != "toy":
+        model += "-" + name.split("-", 1)[1]
+    for path in sorted(outputs.glob(f"masks_{name}_[0-9]*.txt")):
         strings, truths, correct, record = [], [], 0, {}
         for line in [*open(path, encoding="utf-8"), "\n"]:
             line = line.rstrip("\n")
@@ -214,9 +222,9 @@ def release(outputs: Path) -> Iterator[Selections]:
                 truths.append(record["truth"])
                 correct += int(record["predicted"] == record["label"])
                 record = {}
-        seed = re.search(r"masks_toy_(\d+)", path.name).group(1)
+        seed = re.search(rf"masks_{re.escape(name)}_(\d+)", path.name).group(1)
         yield Selections(
-            "genspp-release", seed, correct / len(truths), strings, truths, None, None
+            model, seed, correct / len(truths), strings, truths, None, None
         )
 
 
@@ -225,12 +233,18 @@ def per_class(selections: Selections) -> None:
     for string, truth in zip(selections.strings, selections.truths):
         by_truth[truth].append(string)
     print(f"== {selections.model} seed {selections.seed}")
+    code = {}
     for truth in HIGHLIGHTS:
         strings = by_truth[truth]
         sizes = dict(sorted(Counter(len(s) for s in strings).items()))
         common = Counter(strings).most_common(6)
+        code[truth] = common[0][0]
         print(f"  {truth}: n {len(strings)}, sizes {sizes}")
         print(f"    most selected {common}")
+    # The most frequent selection per class, and its length summed over the
+    # classes: the code a run settled on, compared across runs by its length.
+    entries = " ".join(f"{truth}={selected!r}" for truth, selected in code.items())
+    print(f"  code: {entries}, {sum(map(len, code.values()))} characters")
 
 
 def spread(values: Sequence[float]) -> str:
@@ -245,6 +259,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--results", default="results", type=Path)
     parser.add_argument("--release", default=None, type=Path)
+    parser.add_argument("--release-name", default="toy")
     parser.add_argument("--per-class", action="store_true")
     arguments = parser.parse_args()
 
@@ -255,7 +270,7 @@ def main() -> None:
     splits = Registry.from_key(keys.TOY_FR_TASK).splits()
     sources = list(reproduction(arguments.results, splits))
     if arguments.release is not None:
-        sources += list(release(arguments.release))
+        sources += list(release(arguments.release, arguments.release_name))
     if arguments.per_class:
         for selections in sources:
             per_class(selections)
