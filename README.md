@@ -201,7 +201,9 @@ This repository cannot tell whether the published numbers came from that code
 under other seeds or another environment, or from an earlier version.
 
 The reproduction is 4.9 points below the release, and its standard deviation
-is six times larger.
+is six times larger over these five seeds.
+Over twenty seeds, the release spreads as much as the reproduction does, as
+the end of this section shows.
 The spread comes from which code the search finds.
 Every run selects a short code per class rather than the highlight, as the
 next section shows.
@@ -231,13 +233,53 @@ Those two runs used the seeds `[2023, 15451, 1337, 2001, 2080]`, one at the
 paper's mutation rate and one at the release's threshold rate.
 The threshold rate and the batch order fixed in `bd0ad26` therefore do not
 explain the difference.
-Two differences in the table at the end of this README could explain it, and
-neither has been tested.
-The release trains each candidate's predictor on the validation rows as well,
-which this reproduction treats as an error and does not do.
-Its batch order also comes from one generator seeded once per run, so a
-candidate's batches depend on when it is evaluated rather than on its
-chromosome.
+
+The `probe/variance` branch of the reference repository reruns the release
+over seeds 1 to 20 on an L40S GPU, unchanged and in two variants.
+Each variant removes one difference in the table at the end of this README.
+The first trains each candidate's predictor without the validation rows,
+which the release trains on.
+The second seeds each candidate's batch order by its chromosome, where the
+release draws it from one generator seeded once per run.
+
+| Release on Toy, seeds 1 to 20 | Clf-F1 | Hl-F1 | R | Four-character codes |
+|---|---|---|---|---|
+| Unchanged | 99.53 ± 0.28 | 68.64 ± 4.12 | 9.39 ± 1.19 | 4 of 20 |
+| Without the validation rows | 99.30 ± 0.51 | 68.74 ± 2.99 | 9.79 ± 1.00 | 2 of 20 |
+| Batch order seeded by the chromosome | 99.51 ± 0.34 | 69.00 ± 4.00 | 9.55 ± 1.09 | 5 of 20 |
+
+Seeds 1 to 5 of the unchanged release give a highlight F1 of 70.09 ± 0.72,
+which agrees with the rerun above.
+Over twenty seeds, the unchanged release finds the four-character code in 4
+runs.
+Its standard deviation of 4.12 is close to the reproduction's 4.42.
+At that rate, five seeds miss the four-character code with a probability of
+0.33.
+The small spread of the rerun is therefore a property of seeds 1 to 5 rather
+than of the release.
+The reproduction finds the four-character code in 8 of 15 runs, and the
+release in 4 of 20.
+A two-sided Fisher exact test gives p = 0.071.
+The reproduction may still find it more often, and these runs cannot tell.
+
+Neither variant changes the outcome.
+Against the unchanged release, the highlight F1 does not move, with
+Mann-Whitney p = 0.229 and 0.797.
+Its spread does not move either, with Levene p = 0.516 and 0.904.
+The share of four-character codes gives Fisher p = 0.661 and 1.000.
+Training on the validation rows and the batch order therefore do not explain
+the difference either.
+A third variant copied the initial weights that a reused model slot is reset
+to, and its twenty runs are byte-identical to the unchanged ones.
+On a GPU the release already restores those weights, because moving a
+candidate to the device gives its parameters new storage.
+
+The release aggregates its runs with `np.mean` and `np.std`, and `np.std` is
+the population standard deviation.
+Over five runs, it is 0.894 times the sample standard deviation this README
+reports, which cannot account for a spread six times smaller.
+None of the twenty runs reaches the published highlight F1 of 76.02, and the
+highest is 73.9.
 
 ### Toy: what the selections contain
 
