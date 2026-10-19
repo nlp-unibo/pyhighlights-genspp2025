@@ -283,9 +283,12 @@ highest is 73.9.
 
 ### Toy: what the selections contain
 
-The Toy corpus is built so that only the whole highlight determines the class.
-Each class has one highlight, `aba`, `baa` or `abc`, and every text is
-contaminated with fragments of the other two.
+The Toy corpus was designed so that only the whole highlight determines the
+class.
+Each class has one highlight, `aba`, `baa` or `abc`, and the generator was meant
+to contaminate every text with fragments of the other two.
+The end of this section measures how far the released corpus holds to that
+design.
 `selection.py` checks whether the test selections of trained models contain
 that evidence.
 It uses two measures, and neither consults the model's own predictor.
@@ -335,6 +338,24 @@ marks it by `aa` in 80%.
 The release uses the same code, with `b` in 72% to 82%, `ba` in 65% to 78% and
 `aa` in 64% to 75%.
 A lone `b` occurs in every highlight, so it is no evidence for `abc`.
+
+The other two parts of that code are evidence under the corpus itself.
+Outside the highlight, each of `ab`, `ba`, `aa` and `bc` occurs in only 1.7%
+to 3.0% of the documents of every class.
+That is the rate random filler produces, so the contamination adds almost no
+fragments.
+Of the first 8,000 documents, 89.5% of those containing `aa` are `baa`
+documents, and 96.0% of those containing `bc` are `abc` documents.
+A rule that reads `aa` as `baa`, `bc` as `abc` and anything else as `aba`
+classifies 94.0% of the 2,000 test documents.
+For `aba`, both contiguous fragments occur in a second highlight.
+With its middle character hidden, `a?a` still marks `aba` in 85.6% of the
+documents that contain it.
+A lone `c` marks `abc` in 50.2% of the documents that contain it, against a
+third by chance.
+The design therefore holds only for `a` and `b`, which occur in every
+highlight.
+A code of `aa` or `bc` reads as evidence, and a lone `b` does not.
 
 The baselines mostly mark a class by the size of the selection.
 In 18 of their 20 runs, one class is selected as a single character in at
