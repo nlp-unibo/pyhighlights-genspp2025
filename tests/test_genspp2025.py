@@ -583,3 +583,34 @@ def test_a_complete_highlight_needs_every_gold_character_and_no_rival():
     # A fragment of another highlight is not a rival.
     assert selection.complete_in_view("_ab_aba", [4, 5, 6], "aba")
     assert not selection.complete_in_view("abcaba_", [3, 4, 5], "aba")
+
+
+def test_other_seeds_write_beside_the_table_not_into_it(monkeypatch):
+    """`--seeds` replaces the cell's seeds and writes under its own folder."""
+    ran = {}
+
+    class Task:
+        def run(self):
+            pass
+
+    def from_key(key, save_path, **cell):
+        ran.update(save_path=save_path, **cell)
+        return Task()
+
+    monkeypatch.setattr(run.Registry, "build", lambda **_: ([], []))
+    monkeypatch.setattr(run.Registry, "from_key", from_key)
+    monkeypatch.setattr(
+        sys, "argv", ["run.py", "toy", "--model", "genspp", "--seeds", "1-20"]
+    )
+    run.main()
+
+    assert ran["seeds"] == list(range(1, 21))
+    assert Path(ran["save_path"]) == Path("results") / "seeds-1-20"
+    assert run.seed_list("1,2,5") == [1, 2, 5]
+
+
+def test_a_smoke_run_takes_no_seeds(monkeypatch):
+    monkeypatch.setattr(run.Registry, "build", lambda **_: ([], []))
+    monkeypatch.setattr(sys, "argv", ["run.py", "toy", "--smoke", "--seeds", "1-3"])
+    with pytest.raises(SystemExit, match="takes no --seeds"):
+        run.main()

@@ -90,8 +90,13 @@ sbatch cluster/run.sbatch toy                     # four Toy baselines
 sbatch cluster/run-genspp.sbatch toy              # Toy GenSPP
 sbatch cluster/run.sbatch hatexplain              # four HateXplain baselines
 sbatch cluster/run-genspp.sbatch hatexplain       # HateXplain GenSPP
+sbatch cluster/run-genspp.sbatch toy --seeds 1-20 # Toy GenSPP, seeds 1 to 20
 python compare.py --results results
 ```
+
+`--seeds` writes under `results/seeds-1-20/`, so the table keeps reading the
+five-seed run.
+Twenty GenSPP seeds on Toy take about nine hours, inside the 24-hour limit.
 
 One job per model, five per corpus, so a job produces a cell.
 The jobs split by model because the cost differs by model and not by seed.
