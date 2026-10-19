@@ -5,6 +5,7 @@
     python run.py hatexplain --embeddings glove.twitter.27B.25d.txt
     python run.py toy --smoke               # one seed, one batch, minutes
     python run.py toy --model genspp --released-threshold --results results-released
+    python run.py toy --model genspp --seeds 1-20   # writes under results/seeds-1-20/
 
 `--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
 search of its own, since a search reads no trainer argument.
@@ -19,6 +20,8 @@ says, which has to be somewhere other than the paper-faithful run: both carry
 the same task name, and `MetricsAnalyzer` reports the newest run under a name.
 
 `--smoke` writes under `results/smoke/` rather than beside the real runs.
+`--seeds` replaces the cell's seeds and writes under `results/seeds-<spec>/`
+for the same reason: a run of other seeds is not the table's run.
 `MetricsAnalyzer` reports the newest run per task name, and a smoke result
 carries the same names, so writing it alongside would take a real number out
 of the table.
@@ -100,6 +103,16 @@ def released_threshold_search(corpus: str):
     return TOY_GENSPP_RELEASED_THRESHOLD_TRAINER
 
 
+def seed_list(spec: str) -> list:
+    """``1-20`` or ``1,2,5`` as a list of seeds."""
+    if "-" in spec:
+        first, last = (int(part) for part in spec.split("-"))
+        if first > last:
+            raise argparse.ArgumentTypeError(f"{spec} is an empty range")
+        return list(range(first, last + 1))
+    return [int(part) for part in spec.split(",")]
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("corpus", choices=("toy", "hatexplain"))
@@ -110,6 +123,11 @@ def main() -> None:
         help="path to glove.twitter.27B.25d.txt; HateXplain refuses without it",
     )
     parser.add_argument("--results", default=Path("results"), type=Path)
+    parser.add_argument(
+        "--seeds",
+        default=None,
+        help="seeds to run instead of the cell's, as 1-20 or 1,2,5",
+    )
     # Either flag replaces the GenSPP cell's search, so naming both would have
     # to mean one of them silently losing.
     search = parser.add_mutually_exclusive_group()
@@ -134,8 +152,16 @@ def main() -> None:
     if invalid:
         raise SystemExit(f"invalid registrations: {sorted(str(k) for k in invalid)}")
 
+    if arguments.seeds and arguments.smoke:
+        raise SystemExit("--smoke runs one seed of its own, so it takes no --seeds")
     save_path = arguments.results / ("smoke" if arguments.smoke else "")
     extra = dict(SMOKE) if arguments.smoke else {}
+    if arguments.seeds:
+        try:
+            extra["seeds"] = seed_list(arguments.seeds)
+        except (ValueError, argparse.ArgumentTypeError) as error:
+            raise SystemExit(f"--seeds {arguments.seeds}: {error}") from error
+        save_path = arguments.results / f"seeds-{arguments.seeds.replace(',', '_')}"
     if arguments.embeddings:
         extra["embeddings"] = arguments.embeddings
 
