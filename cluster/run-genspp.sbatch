@@ -18,6 +18,7 @@
 #   sbatch cluster/run-genspp.sbatch toy --smoke
 #   sbatch cluster/run-genspp.sbatch toy
 #   sbatch cluster/run-genspp.sbatch hatexplain
+#   sbatch cluster/run-genspp.sbatch toy --g150         # writes results/g150/
 
 set -euo pipefail
 

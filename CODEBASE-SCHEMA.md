@@ -15,3 +15,10 @@
 `main` scores each source with `complete_in_view`, `complete_in_string`, and `Readers.accuracy`, then prints its means with `spread`.
 `Readers` trains `Reader` instances through `Readers._train`, which calls `gold` and `Readers.encode`.
 `tests/test_genspp2025.py` calls `complete_in_string` and `complete_in_view`.
+
+## run.py
+
+The module depends on `genspp2025.configurations` and `cinnamon.registry`.
+`main` calls `Registry.build`, `keys`, and `seed_list`, then runs each chosen task with `Registry.from_key`.
+`keys`, `smoke_search` and `g150_search` call `corpus_keys`.
+`main` replaces the GenSPP task's `search` with `smoke_search`, `released_threshold_search`, or `g150_search`.
