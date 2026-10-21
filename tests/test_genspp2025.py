@@ -25,6 +25,7 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_GENSPP_TASK,
     HATEXPLAIN_GENSPP_TRAINER,
     HATEXPLAIN_GRAT,
+    HATEXPLAIN_MCD,
     HATEXPLAIN_PIPELINE,
     HATEXPLAIN_SPARSITY,
     HATEXPLAIN_SPARSITY_LOSS,
@@ -45,6 +46,7 @@ from genspp2025.configurations.toy.keys import (
     TOY_GENSPP_SMOKE_TRAINER,
     TOY_GENSPP_TASK,
     TOY_GENSPP_TRAINER,
+    TOY_MCD,
     TOY_MGR,
 )
 from tests.corpora import hatexplain
@@ -478,6 +480,26 @@ def test_the_released_threshold_arm_differs_in_one_parameter():
         for name, value in vars(released).items()
         if not name.startswith("_") and vars(paper).get(name) != value
     } == {"threshold_mutation_std", "registration_key"}
+
+
+def test_mcd_trains_its_generator_without_the_cross_entropy():
+    """The original ``train_decouple_causal2`` scores the cross entropy on a
+    detached rationale in the predictor phase, and the generator phase on the
+    discrepancy and the penalties alone. A cross entropy in ``shared_losses``
+    would reach the generator in its own phase.
+    """
+    build_registry()
+    for key, penalties in (
+        (TOY_MCD, ["sparsity", "contiguity"]),
+        (HATEXPLAIN_MCD, ["sparsity"]),
+    ):
+        mcd = Registry.from_key(key)
+        assert [loss.name for loss in mcd.shared_losses] == penalties
+        assert [loss.name for loss in mcd.predictor_losses] == [
+            "classification",
+            "full_classification",
+        ]
+        assert [loss.name for loss in mcd.generator_losses] == ["discrepancy"]
 
 
 def test_the_g150_arm_differs_in_the_number_of_generations_alone():
