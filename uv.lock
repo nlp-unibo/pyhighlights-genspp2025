@@ -487,7 +487,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pandas", specifier = ">=2.0.0" },
-    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/bd0ad26b8393a7b7d87bd83fc45d670306c0b96c.tar.gz" },
+    { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/e48068b10c109a649803e09b9e4eb20cb6bd2741.tar.gz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
@@ -1682,7 +1682,7 @@ wheels = [
 [[package]]
 name = "pyhighlights"
 version = "0.13.0"
-source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/bd0ad26b8393a7b7d87bd83fc45d670306c0b96c.tar.gz" }
+source = { url = "https://github.com/nlp-unibo/pyhighlights/archive/e48068b10c109a649803e09b9e4eb20cb6bd2741.tar.gz" }
 dependencies = [
     { name = "cinnamon-core" },
     { name = "lightning" },
@@ -1694,7 +1694,7 @@ dependencies = [
     { name = "torch" },
     { name = "torchmetrics" },
 ]
-sdist = { hash = "sha256:60f11574fdf3ce036a3167636d4a618508b7965db8f47ba7dd19ecd36131c378" }
+sdist = { hash = "sha256:f27eac1f4e84dfac03f0e46c5e5f69884fb319a3c73c3695b2ea70bf8f12aae7" }
 
 [package.metadata]
 requires-dist = [
@@ -1708,6 +1708,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.15.20" },
+    { name = "scikit-learn", marker = "extra == 'analysis'", specifier = ">=1.3" },
     { name = "sphinx", marker = "extra == 'docs'", specifier = ">=7.0" },
     { name = "sphinx-autodoc-typehints", marker = "extra == 'docs'", specifier = ">=2.0" },
     { name = "sphinxcontrib-mermaid", marker = "extra == 'docs'", specifier = ">=1.0" },
@@ -1715,7 +1716,7 @@ requires-dist = [
     { name = "torchmetrics", specifier = ">=1.0.0" },
     { name = "transformers", marker = "extra == 'transformers'", specifier = ">=4.0.0" },
 ]
-provides-extras = ["transformers", "dev", "docs"]
+provides-extras = ["transformers", "analysis", "dev", "docs"]
 
 [[package]]
 name = "pytest"
