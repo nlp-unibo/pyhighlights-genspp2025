@@ -321,11 +321,11 @@ The complete-highlight rate asks the corpus instead.
 | FR | 96.37 ± 6.50 | 11.31 ± 14.75 | 11.46 ± 14.68 |
 | MGR | 99.45 ± 0.49 | 9.86 ± 10.58 | 10.02 ± 10.60 |
 | MCD | 98.76 ± 1.95 | 22.63 ± 16.33 | 22.93 ± 16.41 |
-| G-RAT | 99.86 ± 0.18 | 29.38 ± 27.45 | 29.41 ± 27.44 |
+| G-RAT | 99.77 ± 0.39 | 17.67 ± 22.21 | 17.69 ± 22.20 |
 | GenSPP | 99.54 ± 0.32 | 2.24 ± 0.92 | 2.78 ± 1.23 |
 | GenSPP, release rerun | 99.61 ± 0.23 | - | 6.59 ± 0.43 |
 
-Every model classifies at 96% or above, while at most 29% of its selections
+Every model classifies at 96% or above, while at most 23% of its selections
 contain the evidence.
 The predictors therefore decode the label from something other than the whole
 highlight.
