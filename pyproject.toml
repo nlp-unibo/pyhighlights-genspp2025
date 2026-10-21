@@ -27,8 +27,10 @@ dependencies = [
     # 0.9.0 renamed `AnnotationAggregator(rationale=)` to `highlights=` and
     # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls.
     #
-    # Commit e48068b loads the embedding table into G-RAT's guider, which
-    # read a table of its own before: random on Toy, two rows on HateXplain.
+    # Commit a071d49 rebuilds a run's test predictions from its checkpoints,
+    # which the HateXplain runs did not store. Commit e48068b below it loads
+    # the embedding table into G-RAT's guider, which read a table of its own
+    # before: random on Toy, two rows on HateXplain.
     # Commit bd0ad26 below it regroups a GenSPP candidate's training batches at every
     # epoch, as the release's shuffling loader does. Commit 3519758 below it
     # writes each finished seed before starting the next. It
@@ -36,7 +38,7 @@ dependencies = [
     # spawned worker processes, and lets the GenSPP backbones leave out layer
     # normalisation. Pin the commit because these changes have not been
     # released.
-    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/e48068b10c109a649803e09b9e4eb20cb6bd2741.tar.gz",
+    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/a071d4993cae0f904b705882caa49cadc24aeda5.tar.gz",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
