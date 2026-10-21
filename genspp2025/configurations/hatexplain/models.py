@@ -10,8 +10,6 @@ from pyhighlights.configurations.genspp import GRUGenSPPConfig
 from pyhighlights.configurations.grat import AttentionGuiderConfig, GRUGRATConfig
 from pyhighlights.configurations.keys import (
     CLASSIFICATION_LOSS,
-    DISCREPANCY_LOSS,
-    FULL_CLASSIFICATION_LOSS,
 )
 from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
@@ -79,11 +77,11 @@ class HateXplainMGRConfig(GRUMGRConfig):
 class HateXplainMCDConfig(GRUMCDConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
     predictor_backbone: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
-    shared_losses: List[RegistrationKey[Loss]] = Param(
-        [CLASSIFICATION_LOSS, HATEXPLAIN_SPARSITY_LOSS]
-    )
-    predictor_losses: List[RegistrationKey[Loss]] = Param([FULL_CLASSIFICATION_LOSS])
-    generator_losses: List[RegistrationKey[Loss]] = Param([DISCREPANCY_LOSS])
+    #: Sparsity alone, since HateXplain has no contiguity term. The
+    #: classification losses stay in the predictor phase, as the original
+    #: `train_decouple_causal2` scores them, so the generator never trains on
+    #: the predictor's cross entropy.
+    shared_losses: List[RegistrationKey[Loss]] = Param([HATEXPLAIN_SPARSITY_LOSS])
 
 
 @register_class(
