@@ -38,6 +38,8 @@
 #   sbatch cluster/run-genspp.sbatch toy               # Toy GenSPP
 #   sbatch cluster/run.sbatch hatexplain               # four HateXplain baselines
 #   sbatch cluster/run-genspp.sbatch hatexplain        # HateXplain GenSPP
+#   sbatch cluster/run-genspp.sbatch toy --g150        # Toy GenSPP, G = 150
+#   sbatch cluster/run-genspp.sbatch hatexplain --g150 # HateXplain GenSPP, G = 150
 #
 # Why the model and not the corpus or the seed. A task runs its five seeds
 # itself and writes them into one `results.json`; five per-seed jobs would

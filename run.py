@@ -6,6 +6,7 @@
     python run.py toy --smoke               # one seed, one batch, minutes
     python run.py toy --model genspp --released-threshold --results results-released
     python run.py toy --model genspp --seeds 1-20   # writes under results/seeds-1-20/
+    python run.py toy --model genspp --g150   # writes under results/g150/
 
 `--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
 search of its own, since a search reads no trainer argument.
@@ -22,6 +23,8 @@ the same task name, and `MetricsAnalyzer` reports the newest run under a name.
 `--smoke` writes under `results/smoke/` rather than beside the real runs.
 `--seeds` replaces the cell's seeds and writes under `results/seeds-<spec>/`
 for the same reason: a run of other seeds is not the table's run.
+`--g150` searches over 150 generations, Table 2's `GenSPP (G = 150)` row, and
+writes under `results/g150/`.
 `MetricsAnalyzer` reports the newest run per task name, and a smoke result
 carries the same names, so writing it alongside would take a real number out
 of the table.
@@ -103,6 +106,13 @@ def released_threshold_search(corpus: str):
     return TOY_GENSPP_RELEASED_THRESHOLD_TRAINER
 
 
+def g150_search(corpus: str):
+    """The search over 150 generations, Table 2's ``GenSPP (G = 150)`` row."""
+    module = corpus_keys(corpus)
+    prefix = "TOY" if corpus == "toy" else "HATEXPLAIN"
+    return getattr(module, f"{prefix}_GENSPP_G150_TRAINER")
+
+
 def seed_list(spec: str) -> list:
     """``1-20`` or ``1,2,5`` as a list of seeds."""
     if "-" in spec:
@@ -137,6 +147,11 @@ def main() -> None:
         action="store_true",
         help="search Toy GenSPP with the release's threshold mutation, not the paper's",
     )
+    search.add_argument(
+        "--g150",
+        action="store_true",
+        help="search GenSPP over 150 generations, Table 2's G = 150 row",
+    )
     arguments = parser.parse_args()
 
     if arguments.corpus == "hatexplain" and not arguments.embeddings:
@@ -162,6 +177,10 @@ def main() -> None:
         except (ValueError, argparse.ArgumentTypeError) as error:
             raise SystemExit(f"--seeds {arguments.seeds}: {error}") from error
         save_path = arguments.results / f"seeds-{arguments.seeds.replace(',', '_')}"
+    if arguments.g150:
+        if arguments.model != "genspp":
+            raise SystemExit("--g150 is a GenSPP search, so it needs --model genspp")
+        save_path = save_path / "g150"
     if arguments.embeddings:
         extra["embeddings"] = arguments.embeddings
 
@@ -174,6 +193,8 @@ def main() -> None:
             cell["search"] = smoke_search(arguments.corpus)
         elif model == "genspp" and arguments.released_threshold:
             cell["search"] = released_threshold_search(arguments.corpus)
+        elif model == "genspp" and arguments.g150:
+            cell["search"] = g150_search(arguments.corpus)
         Registry.from_key(chosen[model], save_path=str(save_path), **cell).run()
 
 

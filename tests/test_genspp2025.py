@@ -21,6 +21,7 @@ from genspp2025.components.corpora import ReleasedToyLoader
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR_TASK,
     HATEXPLAIN_GENSPP,
+    HATEXPLAIN_GENSPP_G150_TRAINER,
     HATEXPLAIN_GENSPP_TASK,
     HATEXPLAIN_GENSPP_TRAINER,
     HATEXPLAIN_GRAT,
@@ -39,6 +40,7 @@ from genspp2025.configurations.toy.keys import (
     TOY_BENCHMARK,
     TOY_FR_TASK,
     TOY_GENSPP,
+    TOY_GENSPP_G150_TRAINER,
     TOY_GENSPP_RELEASED_THRESHOLD_TRAINER,
     TOY_GENSPP_SMOKE_TRAINER,
     TOY_GENSPP_TASK,
@@ -476,6 +478,33 @@ def test_the_released_threshold_arm_differs_in_one_parameter():
         for name, value in vars(released).items()
         if not name.startswith("_") and vars(paper).get(name) != value
     } == {"threshold_mutation_std", "registration_key"}
+
+
+def test_the_g150_arm_differs_in_the_number_of_generations_alone():
+    """Table 2's ``GenSPP (G = 150)`` row is the paper's search over 150 generations."""
+    build_registry()
+    for paper_key, g150_key in (
+        (TOY_GENSPP_TRAINER, TOY_GENSPP_G150_TRAINER),
+        (HATEXPLAIN_GENSPP_TRAINER, HATEXPLAIN_GENSPP_G150_TRAINER),
+    ):
+        paper = Registry.from_key(paper_key, expected_type=GenSPPTrainer)
+        g150 = Registry.from_key(g150_key, expected_type=GenSPPTrainer)
+
+        assert (paper.n_generations, g150.n_generations) == (100, 150)
+        assert {
+            name
+            for name, value in vars(g150).items()
+            if not name.startswith("_") and vars(paper).get(name) != value
+        } == {"n_generations", "registration_key"}
+
+
+def test_a_g150_run_needs_the_genspp_cell(monkeypatch):
+    """Every other cell would run its own search and write it under ``g150/``."""
+    monkeypatch.setattr(sys, "argv", ["run.py", "toy", "--g150"])
+    with pytest.raises(SystemExit) as refused:
+        run.main()
+
+    assert "--model genspp" in str(refused.value.code)
 
 
 def test_the_search_scores_candidates_across_the_workers_the_job_allocates():

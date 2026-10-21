@@ -66,3 +66,18 @@ class ToyGenSPPSmokeTrainerConfig(ToyGenSPPTrainerConfig):
     n_generations: int = Param(1, ge=0)
     population_size: int = Param(2, ge=2)
     predictor_epochs: int = Param(1, ge=1)
+
+
+@register_class(
+    name="trainer",
+    tags={"genspp", "toy", "g150"},
+    namespace=NAMESPACE,
+    component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
+)
+class ToyGenSPPG150TrainerConfig(ToyGenSPPTrainerConfig):
+    """The search over 150 generations, the ``GenSPP (G = 150)`` row of Table 2.
+
+    The paper's search in every other respect.
+    """
+
+    n_generations: int = Param(150, ge=0)

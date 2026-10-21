@@ -21,6 +21,7 @@ TOY_GENSPP_RELEASED_THRESHOLD_TRAINER = key(
     "trainer", "genspp", "toy", "released-threshold"
 )
 TOY_GENSPP_SMOKE_TRAINER = key("trainer", "genspp", "toy", "smoke")
+TOY_GENSPP_G150_TRAINER = key("trainer", "genspp", "toy", "g150")
 TOY_FR_TASK = key("task", "fr", "toy")
 TOY_MGR_TASK = key("task", "mgr", "toy")
 TOY_MCD_TASK = key("task", "mcd", "toy")
