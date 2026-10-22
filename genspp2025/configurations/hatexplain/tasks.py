@@ -35,9 +35,12 @@ class HateXplainTaskConfig(PaperTaskConfig):
     #: The GloVe file, which the task is given rather than fetching. Building
     #: without it is refused.
     embeddings: str | None = Param(None)
-    #: GloVe's whole vocabulary, as the released collator's
-    #: ``use_pretrained_only=True`` takes it.
-    vocabulary_from: str = Param("vectors")
+    #: Every token of every split gets a row of its own: its GloVe vector, or
+    #: a uniform(-0.05, 0.05) row. The released collator maps a token GloVe
+    #: lacks to ``<PAD>``, a zero row, which is a release error documented in
+    #: the package docstring rather than reproduced.
+    vocabulary_from: str = Param("splits")
+    pretrained_tokens_only: bool = Param(False)
 
 
 @register_class(
@@ -96,18 +99,15 @@ class HateXplainGRATTaskConfig(HateXplainTaskConfig):
     run_method="run",
 )
 class HateXplainGenSPPTaskConfig(PaperGenSPPTaskConfig):
-    """GenSPP over HateXplain, which embeds unlike the four baselines.
+    """GenSPP over HateXplain, embedded as the four baselines are.
 
     The genetic half of the release builds its vocabulary from the training
     split and looks a token id back up in a detokenizer built from it
-    (``genetic/src/preprocessing/dataset_reader/dataset.py``). A token the
-    training split never saw resolves to ``None`` and is embedded as zeros, so
-    this half is ``vocabulary_from="corpus"`` where the baselines are
-    ``"vectors"``.
-
-    One difference is left standing: a *training* token GloVe has no vector for
-    is dropped here and embedded as a fixed ``uniform(-0.05, 0.05)`` placeholder
-    there.
+    (``genetic/src/preprocessing/dataset_reader/dataset.py``). Every training
+    token GloVe lacks shares one ``uniform(-0.05, 0.05)`` vector, and a token
+    the training split never saw resolves to ``None`` and is embedded as
+    zeros. Both collapses are release errors. Here every token of every split
+    gets a row of its own, as for the baselines.
     """
 
     name: str = Param("hatexplain-genspp")
@@ -115,6 +115,6 @@ class HateXplainGenSPPTaskConfig(PaperGenSPPTaskConfig):
     preprocessor: RegistrationKey[Preprocessor] | None = Param(HATEXPLAIN_PIPELINE)
     search: RegistrationKey = Param(HATEXPLAIN_GENSPP_TRAINER)
     embeddings: str | None = Param(None)
-    pretrained_tokens_only: bool = Param(True)
-    vocabulary_from: str = Param("corpus")
+    pretrained_tokens_only: bool = Param(False)
+    vocabulary_from: str = Param("splits")
     requires_embeddings: bool = Param(True)

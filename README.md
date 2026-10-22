@@ -444,10 +444,12 @@ One loader generates, saves and reads, so a published toy corpus is a URL and
 a digest in a configuration rather than a class somebody writes per dataset.
 
 The artifact this configuration names is
-[10.5281/zenodo.22828019](https://doi.org/10.5281/zenodo.22828019),
-`pyhighlights-genspp-toy-v2.zip`.
+[10.5281/zenodo.23570345](https://doi.org/10.5281/zenodo.23570345),
+`pyhighlights-genspp-toy-v3.zip`.
 It holds the corpus in the library's own columns, converted when the artifact
 was built, so nothing converts it on the way in.
+It also stores each row's split in a `split` column, which holds the released baselines' rows: the first 80% train with a fifth of it held out under seed 15000, and the rest test.
+The split is therefore data, not a draw that depends on a library version.
 `pyhighlights/tools/build_datasets.py --skip-r2a` reproduces the published
 bytes from the release's pickle, and
 `genspp2025/configurations/toy/datasets.py` pins their digest.

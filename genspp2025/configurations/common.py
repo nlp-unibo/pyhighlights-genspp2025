@@ -87,9 +87,10 @@ class PaperTaskConfig(Configuration):
     #: inside its own directory.
     save_path: str | None = Param(None)
     #: Five hundred epochs is a budget, not a schedule: the early stopping
-    #: rule above ends a run long before it.
+    #: rule above ends a run long before it. Deterministic, as every released
+    #: baseline runnable sets it, so a seed reruns to the same numbers.
     trainer_args: Dict[str, Any] = Param(
-        {"accelerator": "auto", "devices": 1, "max_epochs": 500}
+        {"accelerator": "auto", "devices": 1, "max_epochs": 500, "deterministic": True}
     )
 
 
