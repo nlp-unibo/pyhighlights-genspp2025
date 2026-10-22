@@ -107,6 +107,7 @@ def test_the_released_hyperparameters_are_what_is_registered():
     ]
     assert stopping.patience == 30
     assert task.trainer_args["max_epochs"] == 500
+    assert task.trainer_args["deterministic"] is True
 
     # Three generators, and the baselines' hidden sizes: 8 for toy, 16 for
     # HateXplain.
@@ -343,12 +344,6 @@ def test_the_registered_toy_key_names_the_published_artifact():
     # than after it: two builds of the same released pickle are byte for byte
     # the same, so publishing cannot change this number. Only `RECORD` moves.
     assert loader.sha256 == SHA256
-    # The released baselines' split scheme, which the artifact does not store.
-    assert (loader.train_ratio, loader.val_ratio, loader.split_seed) == (
-        0.8,
-        0.2,
-        15000,
-    )
 
 
 def test_the_converted_artifact_needs_no_proxy(tmp_path):

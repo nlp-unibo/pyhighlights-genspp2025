@@ -50,6 +50,7 @@ SMOKE = {
         "max_epochs": 1,
         "limit_train_batches": 1,
         "limit_val_batches": 1,
+        "deterministic": True,
     },
 }
 
