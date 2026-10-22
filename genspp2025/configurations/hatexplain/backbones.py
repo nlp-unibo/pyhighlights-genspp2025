@@ -36,6 +36,18 @@ class HateXplainBackboneConfig(GRUBackboneConfig):
 
 @register_class(
     name="backbone",
+    tags={"hatexplain", "unnormalised"},
+    namespace=NAMESPACE,
+    component=GRU_BACKBONE_COMPONENT,
+)
+class HateXplainUnnormalisedBackboneConfig(HateXplainBackboneConfig):
+    """The MCD and MGR predictors' encoder, unnormalised as in their originals."""
+
+    layer_norm: bool = Param(False)
+
+
+@register_class(
+    name="backbone",
     tags={"genspp", "hatexplain"},
     namespace=NAMESPACE,
     component=GRU_BACKBONE_COMPONENT,

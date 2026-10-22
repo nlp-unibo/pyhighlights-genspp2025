@@ -11,6 +11,7 @@ import torch as th
 from cinnamon.registry import Registry
 from pyhighlights.components.loaders import ToyLoader
 from pyhighlights.components.models.spp.genspp import GenSPPTrainer
+from pyhighlights.components.models.spp.grat import GuidanceGuider
 from pyhighlights.components.models.spp.implementations import GRUBackbone
 from pyhighlights.components.preprocessors import Preprocessor
 from pyhighlights.utility.embeddings import one_hot_table
@@ -26,6 +27,7 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_GENSPP_TRAINER,
     HATEXPLAIN_GRAT,
     HATEXPLAIN_MCD,
+    HATEXPLAIN_MGR,
     HATEXPLAIN_PIPELINE,
     HATEXPLAIN_SPARSITY,
     HATEXPLAIN_SPARSITY_LOSS,
@@ -46,6 +48,7 @@ from genspp2025.configurations.toy.keys import (
     TOY_GENSPP_SMOKE_TRAINER,
     TOY_GENSPP_TASK,
     TOY_GENSPP_TRAINER,
+    TOY_GRAT,
     TOY_MCD,
     TOY_MGR,
 )
@@ -500,6 +503,41 @@ def test_mcd_trains_its_generator_without_the_cross_entropy():
             "full_classification",
         ]
         assert [loss.name for loss in mcd.generator_losses] == ["discrepancy"]
+
+
+def test_mcd_validates_on_the_losses_the_setup_monitors():
+    """The setup's validation total has no cross entropy on the full input."""
+    build_registry()
+    assert Registry.from_key(TOY_MCD).monitored_losses == [
+        "classification",
+        "sparsity",
+        "contiguity",
+        "discrepancy",
+    ]
+    assert Registry.from_key(HATEXPLAIN_MCD).monitored_losses == [
+        "classification",
+        "sparsity",
+        "discrepancy",
+    ]
+
+
+def test_the_baselines_normalise_where_their_originals_do():
+    """MCD and MGR normalise the generator alone; G-RAT shares one LayerNorm
+    between its two encoders and guides with the original guidance module.
+    """
+    build_registry()
+    for key in (TOY_MCD, TOY_MGR, HATEXPLAIN_MCD, HATEXPLAIN_MGR):
+        model = Registry.from_key(key)
+        assert isinstance(model.predictor_backbone.layer_norm, th.nn.Identity)
+        for backbone in model.selector_backbones:
+            assert isinstance(backbone.layer_norm, th.nn.LayerNorm)
+    for key in (TOY_GRAT, HATEXPLAIN_GRAT):
+        model = Registry.from_key(key)
+        assert (
+            model.predictor_backbone.layer_norm
+            is model.selector_backbones[0].layer_norm
+        )
+        assert isinstance(model.guider, GuidanceGuider)
 
 
 def test_the_g150_arm_differs_in_the_number_of_generations_alone():

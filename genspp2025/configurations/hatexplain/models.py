@@ -7,7 +7,7 @@ from cinnamon.registry import RegistrationKey, register_class
 from pyhighlights.components.models.spp.base import SPPBackbone
 from pyhighlights.configurations.fr import GRUFRConfig
 from pyhighlights.configurations.genspp import GRUGenSPPConfig
-from pyhighlights.configurations.grat import AttentionGuiderConfig, GRUGRATConfig
+from pyhighlights.configurations.grat import GRUGRATConfig, GuidanceGuiderConfig
 from pyhighlights.configurations.keys import (
     CLASSIFICATION_LOSS,
 )
@@ -22,6 +22,7 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_GUIDER,
     HATEXPLAIN_JSD_LOSS,
     HATEXPLAIN_SPARSITY_LOSS,
+    HATEXPLAIN_UNNORMALISED_BACKBONE,
 )
 from genspp2025.configurations.keys import (
     NAMESPACE,
@@ -32,11 +33,17 @@ from genspp2025.configurations.keys import (
     name="guider",
     tags={"hatexplain"},
     namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.grat.AttentionGuider",
+    component="pyhighlights.components.models.spp.grat.GuidanceGuider",
 )
-class HateXplainGuiderConfig(AttentionGuiderConfig):
-    backbone: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
-    noise_sigma: float = Param(1.0, ge=0.0)
+class HateXplainGuiderConfig(GuidanceGuiderConfig):
+    """The original guidance module, sized as the baselines' encoder."""
+
+    #: A placeholder, as in :class:`HateXplainBackboneConfig`: the task
+    #: replaces the table with GloVe.
+    vocab_size: int = Param(3, ge=3)
+    embedding_dim: int = Param(25, ge=1)
+    hidden_size: int = Param(16, ge=1)
+    freeze_embeddings: bool | None = Param(True)
 
 
 @register_class(
@@ -62,7 +69,9 @@ class HateXplainMGRConfig(GRUMGRConfig):
     selector_backbones: List[RegistrationKey[SPPBackbone]] = Param(
         [HATEXPLAIN_BACKBONE, HATEXPLAIN_BACKBONE, HATEXPLAIN_BACKBONE]
     )
-    predictor_backbone: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
+    predictor_backbone: RegistrationKey[SPPBackbone] = Param(
+        HATEXPLAIN_UNNORMALISED_BACKBONE
+    )
     losses: List[RegistrationKey[Loss]] = Param(
         [CLASSIFICATION_LOSS, HATEXPLAIN_SPARSITY_LOSS]
     )
@@ -76,12 +85,18 @@ class HateXplainMGRConfig(GRUMGRConfig):
 )
 class HateXplainMCDConfig(GRUMCDConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
-    predictor_backbone: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
+    predictor_backbone: RegistrationKey[SPPBackbone] = Param(
+        HATEXPLAIN_UNNORMALISED_BACKBONE
+    )
     #: Sparsity alone, since HateXplain has no contiguity term. The
     #: classification losses stay in the predictor phase, as the original
     #: `train_decouple_causal2` scores them, so the generator never trains on
     #: the predictor's cross entropy.
     shared_losses: List[RegistrationKey[Loss]] = Param([HATEXPLAIN_SPARSITY_LOSS])
+    #: The setup's validation total leaves out the full input's cross entropy.
+    monitored_losses: List[str] | None = Param(
+        ["classification", "sparsity", "discrepancy"]
+    )
 
 
 @register_class(

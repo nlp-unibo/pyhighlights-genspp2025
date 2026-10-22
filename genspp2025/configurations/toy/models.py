@@ -8,18 +8,23 @@ from pyhighlights.components.models.spp.base import SPPBackbone, SPPPredictor
 from pyhighlights.configurations.backbones import MLPPredictorConfig
 from pyhighlights.configurations.fr import GRUFRConfig
 from pyhighlights.configurations.genspp import GRUGenSPPConfig
-from pyhighlights.configurations.grat import AttentionGuiderConfig, GRUGRATConfig
+from pyhighlights.configurations.grat import GRUGRATConfig, GuidanceGuiderConfig
 from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
 
 from genspp2025.configurations.keys import (
     NAMESPACE,
 )
+from genspp2025.configurations.toy import (
+    EMBEDDING_DIM,
+    VOCABULARY_SIZE,
+)
 from genspp2025.configurations.toy.keys import (
     TOY_BACKBONE,
     TOY_GENSPP_BACKBONE,
     TOY_GUIDER,
     TOY_PREDICTOR,
+    TOY_UNNORMALISED_BACKBONE,
 )
 
 
@@ -37,12 +42,16 @@ class ToyPredictorConfig(MLPPredictorConfig):
     name="guider",
     tags={"toy"},
     namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.grat.AttentionGuider",
+    component="pyhighlights.components.models.spp.grat.GuidanceGuider",
 )
-class ToyGuiderConfig(AttentionGuiderConfig):
-    backbone: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
+class ToyGuiderConfig(GuidanceGuiderConfig):
+    """The original guidance module, sized as the baselines' encoder."""
+
+    vocab_size: int = Param(VOCABULARY_SIZE, ge=3)
+    embedding_dim: int = Param(EMBEDDING_DIM, ge=1)
+    hidden_size: int = Param(8, ge=1)
     predictor: RegistrationKey[SPPPredictor] = Param(TOY_PREDICTOR)
-    noise_sigma: float = Param(1.0, ge=0.0)
+    freeze_embeddings: bool | None = Param(True)
 
 
 @register_class(
@@ -66,7 +75,7 @@ class ToyMGRConfig(GRUMGRConfig):
     selector_backbones: List[RegistrationKey[SPPBackbone]] = Param(
         [TOY_BACKBONE, TOY_BACKBONE, TOY_BACKBONE]
     )
-    predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
+    predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_UNNORMALISED_BACKBONE)
     predictor: RegistrationKey[SPPPredictor] = Param(TOY_PREDICTOR)
 
 
@@ -78,8 +87,12 @@ class ToyMGRConfig(GRUMGRConfig):
 )
 class ToyMCDConfig(GRUMCDConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
-    predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
+    predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_UNNORMALISED_BACKBONE)
     predictor: RegistrationKey[SPPPredictor] = Param(TOY_PREDICTOR)
+    #: The setup's validation total leaves out the full input's cross entropy.
+    monitored_losses: List[str] | None = Param(
+        ["classification", "sparsity", "contiguity", "discrepancy"]
+    )
 
 
 @register_class(

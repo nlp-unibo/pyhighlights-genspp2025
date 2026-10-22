@@ -9,6 +9,7 @@ from genspp2025.configurations.keys import key
 TOY = key("dataset", "toy")
 TOY_BACKBONE = key("backbone", "toy")
 TOY_GENSPP_BACKBONE = key("backbone", "toy", "genspp")
+TOY_UNNORMALISED_BACKBONE = key("backbone", "toy", "unnormalised")
 TOY_PREDICTOR = key("predictor", "toy")
 TOY_GUIDER = key("guider", "toy")
 TOY_FR = key("model", "fr", "toy")
