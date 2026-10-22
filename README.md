@@ -468,7 +468,7 @@ This changes no number, because the release's GenSPP encoder is a unidirectional
 | Difference | Here | In the release |
 |---|---|---|
 | Standard deviation | Sample deviation over seeds | Population deviation, `np.std` |
-| GenSPP metrics | The library's metrics, as for every baseline | Code of its own: macro and binary micro class F1, per-document and pooled mask F1, a sparsity averaged over batch means, and no selection size |
+| GenSPP metrics | The library's metrics, as for every baseline | Code of its own. Its `Binary Micro F1 Mask` is the highlight F1 the paper reports, and it pools true positives, false positives and false negatives over every test token as the library does. Its selection rate, `Sparsity`, is averaged over batch means. It computes no selection size |
 | HateXplain highlight F1 | Every token of a document | A document up to its first all-zero embedding, so a test token unseen in training ends the scored part |
 
 ## Corpora
