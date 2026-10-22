@@ -27,8 +27,14 @@ dependencies = [
     # 0.9.0 renamed `AnnotationAggregator(rationale=)` to `highlights=` and
     # `RATIONALES` to `HIGHLIGHTS`, which the HateXplain half calls.
     #
-    # Commit 584cf3b normalises MCD's, MGR's and G-RAT's encoders where their
-    # original implementations do, and e081700 below it lets MCD validate on
+    # Commit d245d98 makes FR, MCD and MGR sample their selection at
+    # evaluation and leaves the four baselines' empty selections unrepaired, as
+    # their original implementations do. Every model pools the kept positions
+    # alone, GenSPP selects with one sigmoid unit as the release does, and a
+    # task can embed every token of every split. A flat Toy corpus holds out
+    # the rows the released baselines hold out. Commit 584cf3b below it
+    # normalises MCD's, MGR's and G-RAT's encoders where their original
+    # implementations do, and e081700 below it lets MCD validate on
     # the losses the setup monitors. Commit 30bc583 below it guides G-RAT with
     # the original guidance module. Commit a071d49 below it rebuilds a run's test predictions from its checkpoints,
     # which the HateXplain runs did not store. Commit e48068b below it loads
@@ -41,7 +47,7 @@ dependencies = [
     # spawned worker processes, and lets the GenSPP backbones leave out layer
     # normalisation. Pin the commit because these changes have not been
     # released.
-    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/584cf3bc390a0da03b713847f16bc2adc1c5b440.tar.gz",
+    "pyhighlights @ https://github.com/nlp-unibo/pyhighlights/archive/d245d98fdac07a9c9fdb2472afe9c5acc12eaa38.tar.gz",
     # Named directly because `compare.py` reads a results tree with it. It
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.

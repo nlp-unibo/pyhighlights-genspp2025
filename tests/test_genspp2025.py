@@ -156,20 +156,14 @@ def test_the_released_hyperparameters_are_what_is_registered():
     assert len(benchmark.tasks) == 5
 
 
-def test_the_two_halves_of_hatexplain_build_their_vocabularies_differently(tmp_path):
-    """The release does not embed HateXplain the same way twice.
+def test_both_halves_of_hatexplain_embed_every_token_of_every_split(tmp_path):
+    """No token is collapsed onto another, in either half.
 
-    ``baselines/configurations/model.py`` sets ``use_pretrained_only=True``, and
-    under that flag ``GloVeEmbedderCollator.fit`` discards the dataframe it is
-    handed and takes all of ``twitter.27B`` as its vocabulary, so no
-    evaluation token the file covers is ever unknown.
-
-    The genetic half does the opposite: ``Dataset.__build_tokenizer`` reads the
-    training split only, and ``__embed_texts`` resolves an unknown id through a
-    detokenizer built from it, so it embeds as zeros.
-
-    Measured on these splits, the difference reaches 5.4% of validation tokens
-    and 5.6% of test tokens.
+    The release embeds HateXplain two ways, and both collapse tokens. The
+    baselines' ``use_pretrained_only=True`` takes all of ``twitter.27B`` and
+    maps any other token to ``<PAD>``. The genetic half shares one vector over
+    the training tokens GloVe lacks and embeds an unseen token as zeros. Here
+    both halves give every token of every split a row of its own.
     """
     build_registry()
     vectors = tmp_path / "vectors.txt"
@@ -178,12 +172,14 @@ def test_the_two_halves_of_hatexplain_build_their_vocabularies_differently(tmp_p
     baseline = Registry.from_key(
         HATEXPLAIN_FR_TASK, save_path=str(tmp_path), embeddings=str(vectors)
     )
-    assert baseline.vocabulary_from == "vectors"
+    assert baseline.vocabulary_from == "splits"
+    assert not baseline.pretrained_tokens_only
 
     genetic = Registry.from_key(
         HATEXPLAIN_GENSPP_TASK, save_path=str(tmp_path), embeddings=str(vectors)
     )
-    assert genetic.vocabulary_from == "corpus"
+    assert genetic.vocabulary_from == "splits"
+    assert not genetic.pretrained_tokens_only
 
     # Both refuse to be built without the file. The configuration used to
     # declare a vocabulary of two, so forgetting it trained on {'the': 1}.
