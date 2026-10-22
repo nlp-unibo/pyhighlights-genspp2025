@@ -32,6 +32,18 @@ class ToyBackboneConfig(GRUBackboneConfig):
 
 @register_class(
     name="backbone",
+    tags={"toy", "unnormalised"},
+    namespace=NAMESPACE,
+    component=GRU_BACKBONE_COMPONENT,
+)
+class ToyUnnormalisedBackboneConfig(ToyBackboneConfig):
+    """The MCD and MGR predictors' encoder, unnormalised as in their originals."""
+
+    layer_norm: bool = Param(False)
+
+
+@register_class(
+    name="backbone",
     tags={"genspp", "toy"},
     namespace=NAMESPACE,
     component=GRU_BACKBONE_COMPONENT,
