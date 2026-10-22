@@ -419,22 +419,57 @@ baseline, and nothing here computes them.
 
 ## Differences from the release
 
-This reproduction was checked against the reference implementation file by
-file, and the corpora, the training settings and the search parameters match
-it.
-Five differences remain.
-Three are in how the data is prepared, and two are in how the search runs.
-The table below is complete, so nothing outside it differs.
-Each row is documented at the point it matters, in the configurations and in
-the library's `docsrc/source/benchmarks.rst`.
+Each model here follows its own paper and its authors' implementation.
+GenSPP's original implementation is the gen-spp release itself.
+The setup of Ruggeri and Signorelli (2025) is reproduced as published: corpora, splits, hyperparameters, seeds and metrics.
+Where the release departs from an original implementation, the difference is documented here and not reproduced.
+An error in an original implementation is documented in the library's model pages, under `docsrc/source/models/`.
+[Issue 45](https://github.com/nlp-unibo/pyhighlights-genspp2025/issues/45) tracks every difference and how it was resolved.
+
+### Data
 
 | Difference | Here | In the release |
 |---|---|---|
 | HateXplain source | Parsed from upstream, 13507 rows, every one agreeing with the release on tokens, label and highlight | Read from the release's own pickles |
-| Split scheme | One scheme serves all five models, so the five numbers are comparable to each other | A scheme per model |
+| Split scheme | One scheme serves all five models, so the five numbers are comparable to each other. Toy reads the release baselines' split from the artifact's `split` column | A scheme per model |
 | Validation rows | Held out of training | Trained on, by the genetic code |
+| HateXplain embeddings | Every token of every split has a row of its own: its GloVe vector, or a `uniform(-0.05, 0.05)` row from a fixed seed | The baselines map a token GloVe lacks to `<PAD>`, a zero row. GenSPP shares one uniform vector over such training tokens and embeds a token unseen in training as zeros |
+| Toy one-hot table | 24 columns | 25 in the baselines, 26 in GenSPP |
+
+### Baselines
+
+| Difference | Here | In the release |
+|---|---|---|
+| Predictor pooling | Max over the kept positions alone | Max over every valid position, so the predictor reads the states of dropped words |
+| Recurrence over padding | Packed, so a document is encoded alike in any batch | An unpacked bidirectional GRU, whose backward direction reads padding first (HateXplain) |
+| Penalties over padding | Sparsity and contiguity over words alone | Over padding as well, since the sampled mask is not masked there (HateXplain) |
+| G-RAT pretraining | The rationalizer steps from epoch 10, as the original does | From epoch 12 |
+| G-RAT early stopping | Patience and checkpoints count from the end of pretraining, as in the original | From epoch 0 |
+| MGR predictor | No layer normalisation, as the original | A `LayerNorm` in no optimizer group, which still normalises with its initial weights |
+
+### GenSPP
+
+| Difference | Here | In the release |
+|---|---|---|
+| Predictor pooling | Max over the kept positions alone | Max of the states multiplied by the selection over every position, so a dimension whose kept states are all negative pools to zero |
+| Fitness | Cross entropy and selection rate weighted by sample | Averaged over per-batch means, so a partial last batch counts as a full one |
+| Predictor initialisation | One initial state shared by the whole search | One model per slot, reset to its initial weights on a GPU but not on a CPU, where `state_dict()` aliases the live tensors |
+| Random streams | Seeded streams of the library's own | Python `random` for roulette selection, `np.random` for survival and mutation |
+| HateXplain numpy seed | Each run's own seed | `np.random.seed(seed=100)` in every run, inside `GloveEmbedder` |
+| Compilation | Eager | `torch.compile` |
 | Batch order | Reshuffled at every epoch, seeded by a hash of the chromosome | Reshuffled at every epoch by the global generator |
-| Mutation | Uniform at 0.05, which explores the selector's decision threshold at 71% of the release's rate | Half that rate at the threshold |
+| Mutation | Gaussian with deviation 0.05 on every gene, as the paper reports. `--released-threshold` sets 0.10 on the threshold gene | Gaussian with deviation 0.10 on the threshold gene and 0.05 on every other gene |
+
+The release pads every HateXplain row to the training maximum length, and a batch here is cut to its longest row.
+This changes no number, because the release's GenSPP encoder is a unidirectional GRU and the pooling here reads kept positions alone.
+
+### Reporting
+
+| Difference | Here | In the release |
+|---|---|---|
+| Standard deviation | Sample deviation over seeds | Population deviation, `np.std` |
+| GenSPP metrics | The library's metrics, as for every baseline | Code of its own. Its `Binary Micro F1 Mask` is the highlight F1 the paper reports, and it pools true positives, false positives and false negatives over every test token as the library does. Its selection rate, `Sparsity`, is averaged over batch means. It computes no selection size |
+| HateXplain highlight F1 | Every token of a document | A document up to its first all-zero embedding, so a test token unseen in training ends the scored part |
 
 ## Corpora
 
@@ -448,7 +483,8 @@ The artifact this configuration names is
 `pyhighlights-genspp-toy-v3.zip`.
 It holds the corpus in the library's own columns, converted when the artifact
 was built, so nothing converts it on the way in.
-It also stores each row's split in a `split` column, which holds the released baselines' rows: the first 80% train with a fifth of it held out under seed 15000, and the rest test.
+It also stores each row's split in a `split` column, which holds the released baselines' rows.
+The first 80% is train, a fifth of it is held out under seed 15000, and the rest is test.
 The split is therefore data, not a draw that depends on a library version.
 `pyhighlights/tools/build_datasets.py --skip-r2a` reproduces the published
 bytes from the release's pickle, and
