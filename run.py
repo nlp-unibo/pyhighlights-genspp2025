@@ -4,9 +4,9 @@
     python run.py toy --model genspp        # one cell
     python run.py hatexplain --embeddings glove.twitter.27B.25d.txt
     python run.py toy --smoke               # one seed, one batch, minutes
-    python run.py toy --model genspp --released-threshold --results results-released
-    python run.py toy --model genspp --seeds 1-20   # writes under results/seeds-1-20/
-    python run.py toy --model genspp --g150   # writes under results/g150/
+    python run.py toy --model genspp --released-threshold
+    python run.py toy --model genspp --seeds 1-20
+    python run.py toy --model genspp --g150
 
 `--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
 search of its own, since a search reads no trainer argument.
@@ -16,18 +16,13 @@ here runs without reinstalling anything, which is why the container installs
 `pyhighlights` and not this repository.
 
 `--released-threshold` searches Toy GenSPP the way the released implementation
-mutates rather than the way its paper reports. It writes where `--results`
-says, which has to be somewhere other than the paper-faithful run: both carry
-the same task name, and `MetricsAnalyzer` reports the newest run under a name.
+mutates rather than the way its paper reports. `--seeds` replaces the cell's
+seeds. `--g150` searches over 150 generations, Table 2's `GenSPP (G = 150)`
+row.
 
-`--smoke` writes under `results/smoke/` rather than beside the real runs.
-`--seeds` replaces the cell's seeds and writes under `results/seeds-<spec>/`
-for the same reason: a run of other seeds is not the table's run.
-`--g150` searches over 150 generations, Table 2's `GenSPP (G = 150)` row, and
-writes under `results/g150/`.
-`MetricsAnalyzer` reports the newest run per task name, and a smoke result
-carries the same names, so writing it alongside would take a real number out
-of the table.
+Every run writes `<results>/<task>/<stamp>`, whatever its flags. A smoke run, a
+run of other seeds and the paper's run share a task name, and `compare.py`
+tells them apart by the search and the seeds each run's manifest records.
 """
 
 import argparse
@@ -170,18 +165,15 @@ def main() -> None:
 
     if arguments.seeds and arguments.smoke:
         raise SystemExit("--smoke runs one seed of its own, so it takes no --seeds")
-    save_path = arguments.results / ("smoke" if arguments.smoke else "")
     extra = dict(SMOKE) if arguments.smoke else {}
     if arguments.seeds:
         try:
             extra["seeds"] = seed_list(arguments.seeds)
         except (ValueError, argparse.ArgumentTypeError) as error:
             raise SystemExit(f"--seeds {arguments.seeds}: {error}") from error
-        save_path = arguments.results / f"seeds-{arguments.seeds.replace(',', '_')}"
     if arguments.g150:
         if arguments.model != "genspp":
             raise SystemExit("--g150 is a GenSPP search, so it needs --model genspp")
-        save_path = save_path / "g150"
     if arguments.embeddings:
         extra["embeddings"] = arguments.embeddings
 
@@ -196,7 +188,7 @@ def main() -> None:
             cell["search"] = released_threshold_search(arguments.corpus)
         elif model == "genspp" and arguments.g150:
             cell["search"] = g150_search(arguments.corpus)
-        Registry.from_key(chosen[model], save_path=str(save_path), **cell).run()
+        Registry.from_key(chosen[model], save_path=str(arguments.results), **cell).run()
 
 
 if __name__ == "__main__":

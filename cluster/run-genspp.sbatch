@@ -18,7 +18,7 @@
 #   sbatch cluster/run-genspp.sbatch toy --smoke
 #   sbatch cluster/run-genspp.sbatch toy
 #   sbatch cluster/run-genspp.sbatch hatexplain
-#   sbatch cluster/run-genspp.sbatch toy --g150         # writes results/g150/
+#   sbatch cluster/run-genspp.sbatch toy --g150         # Table 2's G = 150 row
 
 set -euo pipefail
 
