@@ -157,6 +157,16 @@ fi
 # GPU baseline jobs expose CUDA. The CPU-only GenSPP wrapper disables `--nv`
 # as well as omitting a GPU request.
 
+# A private `/dev/shm` for each job. GenSPP's spawned workers share named
+# semaphores, `sem.mp-*`, and Python unlinks them when the search ends. A
+# node's job epilog deletes its user's `/dev/shm` files, so a job that ends on
+# the same node removes them under a job that is still running. Its exit then
+# prints `FileNotFoundError` from `sem_unlink`, once per semaphore, and a worker
+# that started after the deletion could not open its semaphore at all. Seen on
+# the HateXplain smoke search, which ended five seconds after the Toy one.
+# Semaphores need no tmpfs, so node-local disk serves.
+mkdir -p "$WORK/shm"
+
 APPTAINER_GPU=()
 if [ "${PYHIGHLIGHTS_USE_GPU:-1}" = "1" ]; then
   APPTAINER_GPU=(--nv)
@@ -164,6 +174,7 @@ fi
 
 apptainer exec "${APPTAINER_GPU[@]}" \
   --bind "$PWD:$PWD" --bind "$SCRATCH:$SCRATCH" --bind "$WORK:$WORK" \
+  --bind "$WORK/shm:/dev/shm" \
   --env PYTHONPATH="$PWD" \
   --env PYTHONUNBUFFERED=1 \
   --env OMP_NUM_THREADS="${SLURM_CPUS_PER_TASK:-8}" \
