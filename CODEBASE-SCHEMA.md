@@ -16,6 +16,14 @@
 `Readers` trains `Reader` instances through `Readers._train`, which calls `gold` and `Readers.encode`.
 `tests/test_genspp2025.py` calls `complete_in_string` and `complete_in_view`.
 
+## compare.py
+
+The module depends on `published`, `genspp2025.configurations` keys, and `pyhighlights.components.analyzers`.
+`main` calls `compare` and `costs`, and both read through `rows_of` and `analyzed`.
+`analyzed` builds `PublishedRows`, a `MetricsAnalyzer` whose `reports` calls `row_of` on every run and `latest_runs` on the runs that measure a row.
+`row_of` reads a run's `manifest.json` and maps its search key through `SEARCHES` and its seeds against `SEEDS` and `GENSPP_SEEDS`.
+`PublishedRows.reports` calls `conflict` for a row that more than one run measures.
+
 ## run.py
 
 The module depends on `genspp2025.configurations` and `cinnamon.registry`.

@@ -595,11 +595,22 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
     }
     directory = tmp_path / "toy-genspp" / "2026-01-01T00-00-00"
     directory.mkdir(parents=True)
+    (directory / "manifest.json").write_text(
+        json.dumps(
+            {
+                "settings": {
+                    "name": "toy-genspp",
+                    "seeds": GENSPP_SEEDS,
+                    "search": {"@key": str(TOY_GENSPP_TRAINER)},
+                }
+            }
+        )
+    )
     (directory / "results.json").write_text(
         json.dumps(
             {
                 "name": "toy-genspp",
-                "seeds": [2023],
+                "seeds": GENSPP_SEEDS,
                 "runs": [run],
                 "summary": {
                     name: {"mean": value, "std": 0.0, "values": [value]}
@@ -635,7 +646,7 @@ def test_a_results_tree_with_nothing_in_it_is_an_empty_table(tmp_path):
 
     table = compare.costs(tmp_path, "toy")
 
-    assert list(table["model"]) == list(compare.MODELS)
+    assert list(table["model"]) == list(compare.ROWS)
     assert set(table["runtime/seed"]) == {"-"}
 
 
@@ -666,7 +677,7 @@ def test_a_complete_highlight_needs_every_gold_character_and_no_rival():
 
 
 def test_other_seeds_write_beside_the_table_not_into_it(monkeypatch):
-    """`--seeds` replaces the cell's seeds and writes under its own folder."""
+    """`--seeds` replaces the cell's seeds and writes beside the table's run."""
     ran = {}
 
     class Task:
@@ -685,7 +696,7 @@ def test_other_seeds_write_beside_the_table_not_into_it(monkeypatch):
     run.main()
 
     assert ran["seeds"] == list(range(1, 21))
-    assert Path(ran["save_path"]) == Path("results") / "seeds-1-20"
+    assert Path(ran["save_path"]) == Path("results")
     assert run.seed_list("1,2,5") == [1, 2, 5]
 
 
@@ -694,3 +705,53 @@ def test_a_smoke_run_takes_no_seeds(monkeypatch):
     monkeypatch.setattr(sys, "argv", ["run.py", "toy", "--smoke", "--seeds", "1-3"])
     with pytest.raises(SystemExit, match="takes no --seeds"):
         run.main()
+
+
+def test_a_run_is_the_row_its_manifest_says_it_ran(tmp_path):
+    """Every run writes `<task>/<stamp>`, so the task name alone cannot tell a
+    smoke run, a run of other seeds or a G = 150 search from the paper's run.
+    Read as the newest run per task, any of them would replace the table's
+    number. The manifest records the search and the seeds, and those decide."""
+    import json
+
+    import compare
+
+    def written(stamp, **settings):
+        run = tmp_path / "toy-genspp" / stamp
+        run.mkdir(parents=True)
+        (run / "manifest.json").write_text(json.dumps({"settings": settings}))
+        return run
+
+    def search(key):
+        return {"@key": str(key)}
+
+    paper = written(
+        "1", name="toy-genspp", seeds=GENSPP_SEEDS, search=search(TOY_GENSPP_TRAINER)
+    )
+    g150 = written(
+        "2",
+        name="toy-genspp",
+        seeds=GENSPP_SEEDS,
+        search=search(TOY_GENSPP_G150_TRAINER),
+    )
+    smoke = written(
+        "3", name="toy-genspp", seeds=[2023], search=search(TOY_GENSPP_SMOKE_TRAINER)
+    )
+    seeds = written(
+        "4",
+        name="toy-genspp",
+        seeds=list(range(1, 21)),
+        search=search(TOY_GENSPP_TRAINER),
+    )
+    baseline = written("5", name="toy-fr", seeds=SEEDS, trainer_args={})
+    shortened = written(
+        "6", name="toy-fr", seeds=SEEDS, trainer_args={"limit_train_batches": 1}
+    )
+
+    assert compare.row_of(paper) == "genspp"
+    assert compare.row_of(g150) == "genspp-g150"
+    assert compare.row_of(smoke) is None
+    assert compare.row_of(seeds) is None
+    assert compare.row_of(baseline) == "fr"
+    assert compare.row_of(shortened) is None
+    assert compare.row_of(tmp_path) is None

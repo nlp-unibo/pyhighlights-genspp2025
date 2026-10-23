@@ -5,7 +5,8 @@ Usage::
     python compare.py --results results --corpus toy
     python compare.py --results results            # both corpora
 
-Two tables per corpus. **Table 1** is the paper's, measured beside published.
+Two tables per corpus. **Table 1** is the paper's, measured beside published,
+with Table 2's ``GenSPP (G = 150)`` row under it.
 **Cost** is what those numbers took to produce: runtime, inference, memory
 in mebibytes, parameters trainable and frozen, none of which the paper
 report and which is the other axis a reader compares a rationalizer on. It has
@@ -15,6 +16,11 @@ The library already turns a results tree into a table:
 :class:`pyhighlights.components.analyzers.MetricsAnalyzer` does the walking,
 the per-seed aggregation and the ``mean ± std``. All this adds is the other
 half of each row and the distance between them.
+
+**Which run is a row.** Every run writes ``<task>/<stamp>``, so a smoke run,
+a run of other seeds and a longer search sit beside the paper's under one task
+name. `row_of` reads each run's manifest to say which published row, if any,
+it measures, and two runs of one row resolve to the newest, named on stderr.
 
 **Units.** The paper reports percentages for the three F1-like columns and for
 the selection rate; the library reports those as fractions, and the selection
@@ -31,13 +37,18 @@ failed".
 """
 
 import argparse
+import json
+import sys
 from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
-from pyhighlights.components.analyzers import MetricsAnalyzer
+from pyhighlights.components.analyzers import MetricsAnalyzer, latest_runs
 
-from published import COLUMNS, TABLE_1
+from genspp2025.configurations.hatexplain import keys as hatexplain_keys
+from genspp2025.configurations.keys import GENSPP_SEEDS, SEEDS
+from genspp2025.configurations.toy import keys as toy_keys
+from published import COLUMNS, TABLE_1, TABLE_2
 
 #: The library's column name for each of the paper's, and what to multiply it
 #: by to land in the paper's units.
@@ -49,6 +60,18 @@ MEASURED = {
 }
 
 MODELS = ("fr", "mgr", "mcd", "grat", "genspp")
+
+#: The published row each registered GenSPP search measures. A search missing
+#: from here, the smoke one or the release's threshold mutation, measures none.
+SEARCHES = {
+    str(toy_keys.TOY_GENSPP_TRAINER): "genspp",
+    str(toy_keys.TOY_GENSPP_G150_TRAINER): "genspp-g150",
+    str(hatexplain_keys.HATEXPLAIN_GENSPP_TRAINER): "genspp",
+    str(hatexplain_keys.HATEXPLAIN_GENSPP_G150_TRAINER): "genspp-g150",
+}
+
+#: The rows the comparison prints, and the table each is published in.
+ROWS = {**{model: TABLE_1 for model in MODELS}, "genspp-g150": TABLE_2}
 
 #: The cost table: the library's column name, and how to print it. Runtimes
 #: are per model trained rather than per seed, which is what makes a search
@@ -113,7 +136,7 @@ def costs(directory: Path, corpus: str) -> pd.DataFrame:
     frame = rows_of(directory, corpus, "cost", [name for name, _ in COSTS.values()])
     frame = frame.set_index("task") if "task" in frame.columns else frame
     rows = []
-    for model in MODELS:
+    for model in ROWS:
         task = f"{corpus}-{model}"
         found = frame.loc[task] if task in frame.index else None
         row = {"model": model}
@@ -123,15 +146,79 @@ def costs(directory: Path, corpus: str) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def row_of(run: Path) -> str | None:
+    """The published row a run measures, read off its own manifest.
+
+    Every run of a task writes ``<task>/<stamp>``, a smoke run, a run of other
+    seeds or a longer search as much as the paper's. What tells them apart is
+    the configuration the run recorded: the search it ran and the seeds it ran
+    over. A run on the paper's seeds and a registered search, or on no search
+    at all, measures a row. Anything else measures none, so ``None``.
+    """
+    manifest = run / "manifest.json"
+    if not manifest.exists():
+        return None
+    settings = json.loads(manifest.read_text()).get("settings", {})
+    trainer_args = settings.get("trainer_args") or {}
+    if any(name.startswith("limit_") for name in trainer_args):
+        return None
+    model = settings.get("name", "").partition("-")[2]
+    if "search" in settings:
+        model = SEARCHES.get(settings["search"].get("@key"))
+    if model not in ROWS:
+        return None
+    seeds = GENSPP_SEEDS if model.startswith("genspp") else SEEDS
+    return model if list(settings.get("seeds", [])) == seeds else None
+
+
+@lru_cache(maxsize=None)
+def conflict(name: str, stamps: tuple[str, ...]) -> None:
+    """Name the runs one row had to choose between, once however many splits
+    read them."""
+    print(
+        f"{name}: {len(stamps)} runs, reading {stamps[-1]} of {list(stamps)}",
+        file=sys.stderr,
+    )
+
+
+class PublishedRows(MetricsAnalyzer):
+    """`MetricsAnalyzer`, over the runs that measure a published row.
+
+    A run is reported under ``<corpus>-<row>`` rather than its task name, so
+    a G = 150 search and the paper's search are two rows of one task. Two
+    runs of one row are a conflict, resolved as the library does, to the
+    newest, and named on stderr so neither is lost silently.
+    """
+
+    def reports(self):
+        candidates = []
+        for path in sorted(self.directory.rglob("results.json")):
+            row = row_of(path.parent)
+            if row is None:
+                continue
+            report = json.loads(path.read_text())
+            corpus = report.get("name", "").partition("-")[0]
+            name = f"{corpus}-{row}"
+            candidates.append((name, path.parent.name, {**report, "name": name}))
+        for name, stamp, _ in candidates:
+            others = [other for found, other, _ in candidates if found == name]
+            if len(others) > 1 and stamp == max(others):
+                conflict(name, tuple(sorted(others)))
+        return latest_runs(
+            (name, stamp, {**report, "run": stamp})
+            for name, stamp, report in candidates
+        )
+
+
 @lru_cache(maxsize=None)
 def analyzed(directory: Path, split: str, metrics: tuple[str, ...]) -> pd.DataFrame:
     """One walk of the results tree per split, however many tables read it.
 
-    `MetricsAnalyzer` re-reads every ``results.json`` under the tree on each
-    call and filters by corpus afterwards, so a two-corpus run walked it four
-    times over.
+    The analyzer re-reads every ``results.json`` under the tree on each call
+    and filters by corpus afterwards, so a two-corpus run walked it four times
+    over.
     """
-    return MetricsAnalyzer(
+    return PublishedRows(
         directory=directory, metrics=list(metrics), split=split, pairs=True
     ).analyze()
 
@@ -158,8 +245,8 @@ def compare(directory: Path, corpus: str) -> pd.DataFrame:
     frame = measured(directory, corpus)
     frame = frame.set_index("task") if "task" in frame.columns else frame
     rows = []
-    for model in MODELS:
-        published = TABLE_1[corpus][model]
+    for model, table in ROWS.items():
+        published = table[corpus][model]
         row = {"model": model}
         task = f"{corpus}-{model}"
         found = frame.loc[task] if task in frame.index else None
@@ -192,7 +279,7 @@ def main() -> None:
 
     for corpus in [arguments.corpus] if arguments.corpus else ("toy", "hatexplain"):
         frame = compare(arguments.results, corpus)
-        print(f"\n=== {corpus}: Table 1 ===")
+        print(f"\n=== {corpus}: Table 1, and Table 2's genspp-g150 ===")
         for column in COLUMNS:
             print(f"\n{column}")
             table = frame[

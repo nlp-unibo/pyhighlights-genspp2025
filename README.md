@@ -65,13 +65,19 @@ generation, every other setting the paper's.
 implementation mutates rather than the way its paper reports it.
 The release perturbs the selector's output bias at 0.10 where every other
 gene takes 0.05, and the paper gives a single N(0.0, 0.05).
-The flag is registered for Toy alone, and it writes where `--results` says,
-which has to be somewhere other than the paper-faithful run: both carry the
-same task name, and `MetricsAnalyzer` reports the newest run under a name.
+The flag is registered for Toy alone.
 
 ```bash
-uv run python run.py toy --model genspp --released-threshold --results results-released
+uv run python run.py toy --model genspp --released-threshold
 ```
+
+Every run writes `results/<task>/<stamp>`, whatever its flags.
+`compare.py` reads each run's manifest and puts a run in the table only when
+it ran the paper's seeds and a search registered for a published row.
+A smoke run, a run of other seeds and a released-threshold search sit beside
+the paper's run without entering the table.
+Two runs of one row resolve to the newest, and `compare.py` names both on
+stderr.
 
 ## Cluster
 
@@ -94,7 +100,7 @@ sbatch cluster/run-genspp.sbatch toy --seeds 1-20 # Toy GenSPP, seeds 1 to 20
 python compare.py --results results
 ```
 
-`--seeds` writes under `results/seeds-1-20/`, so the table keeps reading the
+A run of other seeds is not a table row, so the table keeps reading the
 five-seed run.
 Twenty GenSPP seeds on Toy take about nine hours, inside the 24-hour limit.
 
