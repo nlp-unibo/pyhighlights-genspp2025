@@ -20,6 +20,7 @@ import genspp2025
 import run
 from genspp2025.components.corpora import ReleasedToyLoader
 from genspp2025.configurations.hatexplain.keys import (
+    HATEXPLAIN_FR,
     HATEXPLAIN_FR_TASK,
     HATEXPLAIN_GENSPP,
     HATEXPLAIN_GENSPP_G150_TRAINER,
@@ -41,6 +42,7 @@ from genspp2025.configurations.toy.datasets import ARCHIVE, RECORD, SHA256
 from genspp2025.configurations.toy.keys import (
     TOY,
     TOY_BENCHMARK,
+    TOY_FR,
     TOY_FR_TASK,
     TOY_GENSPP,
     TOY_GENSPP_G150_TRAINER,
@@ -529,6 +531,22 @@ def test_the_baselines_normalise_where_their_originals_do():
             is model.selector_backbones[0].layer_norm
         )
         assert isinstance(model.guider, GuidanceGuider)
+
+
+def test_every_baseline_samples_its_selection_at_evaluation():
+    """The four baselines share one inference strategy, the release's."""
+    build_registry()
+    for key in (
+        TOY_FR,
+        TOY_MGR,
+        TOY_MCD,
+        TOY_GRAT,
+        HATEXPLAIN_FR,
+        HATEXPLAIN_MGR,
+        HATEXPLAIN_MCD,
+        HATEXPLAIN_GRAT,
+    ):
+        assert Registry.from_key(key).sample_at_evaluation is True
 
 
 def test_the_g150_arm_differs_in_the_number_of_generations_alone():

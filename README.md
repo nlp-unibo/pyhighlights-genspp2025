@@ -143,6 +143,9 @@ Clf-F1 is macro F1, Hl-F1 is token-level highlight F1, and R is the selection
 rate, all in percent.
 The selection size counts characters on Toy and words on HateXplain.
 Each cell gives the reproduced value first and the published value second.
+The G-RAT rows on both corpora come from runs that took the argmax of the
+selection at evaluation.
+G-RAT now samples it as the other baselines do, and those rows await a rerun.
 
 | Toy | Clf-F1 | Hl-F1 | R | Size |
 |---|---|---|---|---|
@@ -513,10 +516,17 @@ An error in an original implementation is documented in the library's model page
 | Penalties over padding | Sparsity and contiguity over words alone | Over padding as well, since the sampled mask is not masked there (HateXplain) |
 | G-RAT pretraining | The rationalizer steps from epoch 10, as the original does | From epoch 12 |
 | G-RAT early stopping | Patience and checkpoints count from the end of pretraining, as in the original | From epoch 0 |
-| G-RAT selection at evaluation | The argmax of the selector's logits at validation and test | A hard Gumbel sample at validation and test, as in training |
 | G-RAT guide over padding | The guide target is scaled by its mean over words, and its cross entropy averages over words alone | The mean is taken over the padded width, and the cross entropy also scores padding against a target of zero (HateXplain) |
 | MCD validation loss | One selection for every term | One sample for the predictor's cross entropy and another for sparsity, contiguity and the discrepancy |
 | MGR predictor | No layer normalisation, as the original | A `LayerNorm` in no optimizer group, which still normalises with its initial weights |
+
+Every baseline samples its selection at validation and test, as the release
+does.
+The original G-RAT thresholds its selection at 0.5 there instead
+([`model/model_st.py`](https://github.com/shuaibo919/g-rat/blob/d279932/model/model_st.py)),
+and its paper gives no reason for it.
+This repository samples, so that the four baselines are scored under one
+inference strategy.
 
 ### GenSPP
 

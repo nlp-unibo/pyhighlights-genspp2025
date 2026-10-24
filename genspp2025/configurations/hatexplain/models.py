@@ -119,6 +119,10 @@ class HateXplainGRATConfig(GRUGRATConfig):
     )
     guide_decay: float = Param(1e-5, ge=0.0)
     pretrain_epochs: int = Param(10, ge=0)
+    #: Sampled at validation and test, as FR, MGR and MCD are, so the four
+    #: baselines are scored under one inference strategy. The original
+    #: G-RAT thresholds its selection at 0.5 there, and the release samples.
+    sample_at_evaluation: bool = Param(True)
 
 
 @register_class(
