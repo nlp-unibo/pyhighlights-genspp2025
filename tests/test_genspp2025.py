@@ -683,6 +683,20 @@ def test_a_complete_highlight_needs_every_gold_character_and_no_rival():
     assert not selection.complete_in_view("abcaba_", [3, 4, 5], "aba")
 
 
+def test_the_release_scores_a_post_up_to_its_first_unseen_token():
+    import truncated
+
+    seen = {"a", "b"}
+    assert truncated.scored_length(["a", "b", "c", "a"], seen) == 2
+    assert truncated.scored_length(["a", "b"], seen) == 2
+    assert truncated.scored_length(["c"], seen) == 0
+    predicted = [True, False, True, True]
+    gold = [1, 1, 0, 1]
+    assert truncated.counts(predicted, gold, 4) == (2, 1, 1)
+    # The selected gold token after the cut counts for nothing.
+    assert truncated.counts(predicted, gold, 2) == (1, 0, 1)
+
+
 def test_other_seeds_write_beside_the_table_not_into_it(monkeypatch):
     """`--seeds` replaces the cell's seeds and writes under its own folder."""
     ran = {}

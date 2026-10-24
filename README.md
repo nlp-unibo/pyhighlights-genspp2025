@@ -33,6 +33,7 @@ Paper's configurations are provided and registered in this repository.
 | `published.py` | Tables 1 and 2, transcribed. Nothing computed |
 | `compare.py` | a results tree beside those numbers, and what it cost to produce |
 | `selection.py` | what the selections of trained Toy models contain |
+| `truncated.py` | GenSPP's HateXplain highlight F1 as the release scores it |
 | `run.py` | run one cell, or a corpus's five |
 | `cluster/` | the Slurm jobs, and the image they build |
 
@@ -204,8 +205,15 @@ Seeds 1, 2 and 4 reach a highlight F1 between 38.6 and 40.9, and seeds 3 and
 No seed reaches the published 42.62.
 The release scores the GenSPP highlight F1 differently on HateXplain, as the
 table of reporting differences at the end of this README states.
-The release has not been rerun on HateXplain, so these runs cannot separate
-that difference from the implementation or from the published numbers.
+It scores a test post only up to its first token unseen in training and
+validation, which keeps 66.5% of the test tokens.
+`truncated.py` scores the same checkpoints that way, and reaches a highlight
+F1 of 40.80 ± 3.20.
+The scoring therefore accounts for 3.27 of the 5.09 points.
+The remaining 1.82 points are 2.5 published standard deviations, against a
+spread of 3.20 over these five seeds.
+The release has not been rerun on HateXplain, so these runs cannot tell
+whether it reaches the published value under its own scoring.
 
 `python compare.py --results results` produces this comparison, since its
 first table per corpus is Table 1.
