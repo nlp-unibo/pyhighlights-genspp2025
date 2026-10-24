@@ -135,16 +135,13 @@ cell have to finish inside it because a later job cannot resume them.
 
 This section reports Table 1, which is macro F1, token-level highlight F1,
 selection rate and selection size, for each of the five models on each corpus.
-Toy has finished, and HateXplain is still running.
-Until it finishes, the HateXplain numbers this repository stands behind are
-the published ones in `published.py`.
-
-The Toy runs use pyhighlights `d245d98` and the Toy artifact
-`pyhighlights-genspp-toy-v3.zip`.
+Both corpora ran with pyhighlights `d245d98`.
+Toy reads the artifact `pyhighlights-genspp-toy-v3.zip`, and HateXplain reads
+`glove.twitter.27B.25d.txt`.
 Every entry is a mean and a sample standard deviation over five seeds.
 Clf-F1 is macro F1, Hl-F1 is token-level highlight F1, and R is the selection
 rate, all in percent.
-The selection size counts characters.
+The selection size counts characters on Toy and words on HateXplain.
 Each cell gives the reproduced value first and the published value second.
 
 | Toy | Clf-F1 | Hl-F1 | R | Size |
@@ -177,11 +174,43 @@ Its selection rate is 3.05 points below the published one, and its highlight
 F1 is 10.02 points below.
 The section on the release below explains this gap.
 
+| HateXplain | Clf-F1 | Hl-F1 | R | Size |
+|---|---|---|---|---|
+| FR | 73.24 ± 1.35 / 72.14 ± 1.12 | 35.67 ± 0.64 / 31.15 ± 2.56 | 23.22 ± 1.04 / 25.55 ± 0.72 | 3.36 ± 0.14 / 3.46 ± 0.11 |
+| MGR | 70.66 ± 1.21 / 71.14 ± 1.16 | 29.40 ± 1.33 / 29.38 ± 4.83 | 24.06 ± 0.72 / 25.30 ± 1.04 | 3.43 ± 0.11 / 3.42 ± 0.06 |
+| MCD | 64.67 ± 9.12 / 70.37 ± 1.06 | 25.35 ± 6.69 / 27.92 ± 1.66 | 23.11 ± 1.67 / 25.07 ± 1.52 | 3.40 ± 0.23 / 3.50 ± 0.20 |
+| G-RAT | 74.26 ± 0.71 / 73.85 ± 1.05 | 38.25 ± 0.99 / 36.17 ± 1.62 | 24.31 ± 0.57 / 24.68 ± 0.86 | 3.35 ± 0.08 / 3.34 ± 0.08 |
+| GenSPP | 67.97 ± 1.69 / 69.71 ± 0.40 | 37.53 ± 3.40 / 42.62 ± 0.73 | 7.41 ± 0.63 / 6.51 ± 0.58 | 0.99 ± 0.07 / 0.75 ± 0.05 |
+
+MGR and G-RAT reproduce within about one published standard deviation on
+every column.
+FR classifies as published, but its highlight F1 is 4.52 points above the
+published one while its selection rate is 2.33 points below.
+
+MCD reproduces on four of its five seeds.
+Seed 2023 reaches a macro F1 of 48.4 and a highlight F1 of 14.2.
+The other four seeds classify between 68.4 and 69.1 and reach a mean
+highlight F1 of 28.1, against the published 27.92.
+
+GenSPP does not reproduce.
+Its macro F1 is 1.74 points below the published one, and its highlight F1 is
+5.09 points below.
+It selects more words than published, where on Toy it selects fewer.
+Seeds 1, 2 and 4 reach a highlight F1 between 38.6 and 40.9, and seeds 3 and
+5 reach 34.3 and 33.6.
+No seed reaches the published 42.62.
+The release scores the GenSPP highlight F1 differently on HateXplain, as the
+table of reporting differences at the end of this README states.
+The release has not been rerun on HateXplain, so these runs cannot separate
+that difference from the implementation or from the published numbers.
+
 `python compare.py --results results` produces this comparison, since its
 first table per corpus is Table 1.
-On Toy, a GenSPP seed takes 27.4 minutes on CPU workers, which is 2.6 seconds
-per candidate trained.
-A baseline seed takes 5.9 to 14.1 minutes on average.
+A GenSPP seed takes 27.4 minutes on Toy and 72.8 minutes on HateXplain, on
+CPU workers.
+That is 2.6 and 6.9 seconds per candidate trained, respectively.
+A baseline seed takes 5.9 to 14.1 minutes on Toy and 8.0 to 14.2 minutes on
+HateXplain, on average.
 
 ### What `compare.py` prints
 
@@ -484,6 +513,9 @@ An error in an original implementation is documented in the library's model page
 | Penalties over padding | Sparsity and contiguity over words alone | Over padding as well, since the sampled mask is not masked there (HateXplain) |
 | G-RAT pretraining | The rationalizer steps from epoch 10, as the original does | From epoch 12 |
 | G-RAT early stopping | Patience and checkpoints count from the end of pretraining, as in the original | From epoch 0 |
+| G-RAT selection at evaluation | The argmax of the selector's logits at validation and test | A hard Gumbel sample at validation and test, as in training |
+| G-RAT guide over padding | The guide target is scaled by its mean over words, and its cross entropy averages over words alone | The mean is taken over the padded width, and the cross entropy also scores padding against a target of zero (HateXplain) |
+| MCD validation loss | One selection for every term | One sample for the predictor's cross entropy and another for sparsity, contiguity and the discrepancy |
 | MGR predictor | No layer normalisation, as the original | A `LayerNorm` in no optimizer group, which still normalises with its initial weights |
 
 ### GenSPP
