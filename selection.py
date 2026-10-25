@@ -164,10 +164,15 @@ def reproduction(results: Path, splits) -> Iterator[Selections]:
         loader = task.loaders(splits)["test"]
         run = sorted(path for path in directory.iterdir() if path.is_dir())[-1]
         for checkpoint in sorted(run.glob("seed=*/*.ckpt")):
+            seed = checkpoint.parent.name.split("=")[1]
             model = task.build_model()
             state = th.load(checkpoint, map_location="cpu", weights_only=False)
             model.load_state_dict(state["state_dict"], strict=True)
             model.eval()
+            # The four baselines sample their selection at evaluation, so the
+            # draw is seeded with the run's seed to make a row reproducible.
+            # It is still not the draw the run's own test metrics scored.
+            th.manual_seed(int(seed))
             strings, truths, views, positions, correct = [], [], [], [], 0
             with th.no_grad():
                 for batch in loader:
@@ -186,7 +191,7 @@ def reproduction(results: Path, splits) -> Iterator[Selections]:
                         correct += int(predicted[r] == batch.y_true[r])
             yield Selections(
                 model_name,
-                checkpoint.parent.name.split("=")[1],
+                seed,
                 correct / len(truths),
                 strings,
                 truths,
