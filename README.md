@@ -169,9 +169,10 @@ Seed 2001 reaches a macro F1 of 67.3 and a highlight F1 of 14.7.
 Seed 1337 classifies at 93.5 but reaches a highlight F1 of 17.7.
 The other three seeds classify at 97.9 or above and reach a highlight F1
 between 37.8 and 41.5, which is still below the published 54.07.
-The released FR has not been rerun.
-These runs therefore cannot tell whether the gap comes from this
-implementation, from FR itself, or from the published numbers.
+The released FR, rerun as the next section reports, reaches the published
+highlight F1, and none of its seeds collapses.
+The gap is therefore this implementation's, and the next section discusses
+where it comes from.
 
 GenSPP classifies as published but selects fewer characters.
 Its selection rate is 3.05 points below the published one, and its highlight
@@ -195,6 +196,8 @@ MCD reproduces on four of its five seeds.
 Seed 2023 reaches a macro F1 of 48.4 and a highlight F1 of 14.2.
 The other four seeds classify between 68.4 and 69.1 and reach a mean
 highlight F1 of 28.1, against the published 27.92.
+The released MCD collapses on no seed, while the released MGR collapses on
+two, as the next section reports.
 
 GenSPP does not reproduce.
 Its macro F1 is 1.74 points below the published one, and its highlight F1 is
@@ -210,10 +213,15 @@ validation, which keeps 66.5% of the test tokens.
 `truncated.py` scores the same checkpoints that way, and reaches a highlight
 F1 of 40.80 ± 3.20.
 The scoring therefore accounts for 3.27 of the 5.09 points.
-The remaining 1.82 points are 2.5 published standard deviations, against a
-spread of 3.20 over these five seeds.
-The release has not been rerun on HateXplain, so these runs cannot tell
-whether it reaches the published value under its own scoring.
+The release, rerun on HateXplain over seeds 1 to 5, reaches 43.09 ± 2.73
+under its own scoring.
+That is within one published standard deviation of 42.62, so the published
+value is the release's under that scoring.
+The remaining 2.29 points between the release and this implementation, both
+scored the release's way, are this implementation's.
+They are within one standard deviation of either set of five seeds.
+On HateXplain, the two differ in the validation rows and in the embeddings of
+tokens that GloVe lacks, as the tables at the end of this README list.
 
 `python compare.py --results results` produces this comparison, since its
 first table per corpus is Table 1.
@@ -222,6 +230,69 @@ CPU workers.
 That is 2.6 and 6.9 seconds per candidate trained, respectively.
 A baseline seed takes 5.9 to 14.1 minutes on Toy and 8.0 to 14.2 minutes on
 HateXplain, on average.
+
+### Baselines and GenSPP beside their release
+
+The release was rerun on both corpora with its own configurations and seeds.
+The baselines ran from the `cluster` branch of the reference repository at
+`634c86e`, which changes only logging, data paths and the Slurm jobs.
+GenSPP ran from the same branch, under the versions it used on Toy.
+The environment of each run is listed under Reproducibility.
+Every entry is a mean and a sample standard deviation over five seeds, in
+percent except the selection size.
+The release's own files store the population deviation, which is recomputed
+here as the sample deviation.
+The release computes no selection size for GenSPP, and its GenSPP selection
+rate averages batch means.
+
+| Toy, release rerun | Clf-F1 | Hl-F1 | R | Size |
+|---|---|---|---|---|
+| FR | 99.90 ± 0.06 | 55.17 ± 4.35 | 14.70 ± 0.51 | 2.94 ± 0.10 |
+| MGR | 99.76 ± 0.26 | 48.55 ± 16.25 | 15.09 ± 1.16 | 3.02 ± 0.23 |
+| MCD | 99.92 ± 0.04 | 66.17 ± 4.46 | 14.96 ± 0.26 | 2.99 ± 0.05 |
+| G-RAT | 99.51 ± 0.84 | 47.26 ± 8.92 | 15.08 ± 0.29 | 3.02 ± 0.06 |
+| GenSPP | 99.61 ± 0.23 | 69.96 ± 0.70 | 9.94 ± 0.27 | - |
+
+| HateXplain, release rerun | Clf-F1 | Hl-F1 | R | Size |
+|---|---|---|---|---|
+| FR | 72.01 ± 1.40 | 32.47 ± 3.32 | 24.46 ± 0.33 | 3.37 ± 0.05 |
+| MGR | 72.56 ± 0.66 | 20.79 ± 13.78 | 25.20 ± 0.74 | 3.50 ± 0.14 |
+| MCD | 71.75 ± 0.83 | 28.24 ± 1.76 | 24.23 ± 0.52 | 3.38 ± 0.14 |
+| G-RAT | 72.41 ± 0.78 | 37.24 ± 1.06 | 24.93 ± 0.82 | 3.40 ± 0.08 |
+| GenSPP | 69.58 ± 1.95 | 43.09 ± 2.73 | 7.07 ± 1.27 | - |
+
+The four baselines of the release reproduce the published values within
+about one published standard deviation, on both corpora.
+The exception is the highlight F1 of MGR on HateXplain.
+Seeds 15451 and 1337 select almost no highlighted word, at 5.7 and 6.0,
+while the other three reach between 30.0 and 33.0.
+On Toy, GenSPP of the release stays 6.1 points below the published highlight
+F1, as the section on GenSPP on Toy below shows.
+On HateXplain, it reaches the published value.
+
+A collapsed seed here does not correspond to a collapsed seed in the release.
+A seed fixes a random stream, and the two code bases draw from it in a
+different order and over different shapes.
+The Toy one-hot table, the HateXplain vocabulary and the batch order all
+differ.
+Seed 2001 of FR on Toy therefore starts from other weights and other batches
+here than in the release.
+Each code base collapses on runs of its own: this implementation on FR on
+Toy and on MCD on HateXplain, the release on MGR on HateXplain.
+
+The baselines of the release, however, pool the predictor over every valid
+position, so the predictor reads the words that the selection drops.
+That is an error of the release, which this implementation corrects, as the
+table of baseline differences at the end of this README states.
+A predictor that reads the dropped words classifies well whatever the
+selection, so its cross entropy keeps training the generator when the
+selection is poor.
+Here a poor selection also starves the predictor, and both fail together.
+FR seed 2001 on Toy and MCD seed 2023 on HateXplain fail on both columns, as
+that mechanism predicts.
+The correction may therefore make a collapse more likely here than in the
+release.
+No run isolates it, and the comparison stands on the corrected predictor.
 
 ### What `compare.py` prints
 
@@ -476,6 +547,18 @@ HateXplain has no designed evidence to check a selection against.
 
 Table 1 can be rerun, and the results section compares its numbers with the
 published ones.
+The three sets of numbers come from these environments.
+The paper's appendix A.4 names the GPU alone; the rest of its row is from the
+authors.
+
+| Numbers | Hardware | Software |
+|---|---|---|
+| Published | NVIDIA RTX 3060 Ti 8 GB, Intel Core i7-8700K, Ubuntu 24 | CUDA 12.x |
+| Release, rerun | NVIDIA L40S 46 GB with driver 580.95.05, Intel Xeon Platinum 8480+, Ubuntu 24.04.2 | Baselines: torch 1.13.1 for CUDA 11.6, lightning 1.9.0, torchmetrics 0.11.4. GenSPP: torch 2.3.1 for CUDA 12.1, numpy 2.0.0 |
+| This reproduction | The same L40S nodes. GenSPP scores its candidates on CPU workers | torch 2.6.0 for CUDA 12.4, pyhighlights `d245d98` |
+
+The RTX 3060 Ti and the L40S differ in architecture, Ampere and Ada, so the
+same code and seed need not give the same numbers on both.
 The rerun covers all five models on both corpora over five seeds.
 The paper reports five seed runs and does not list their seeds.
 The baselines use `[2023, 15451, 1337, 2001, 2080]`, which are the seeds of
