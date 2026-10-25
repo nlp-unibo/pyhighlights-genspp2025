@@ -240,9 +240,9 @@ The baselines ran from the `cluster` branch of the reference repository at
 `634c86e`, which changes only logging, data paths and the Slurm jobs.
 The released baselines read Toy from `toy/toy_sequential_dataset_easy.pkl`,
 which the release does not ship.
-The rerun reads `genetic/data/toy_dataset.pkl` in its place, which is the
-corpus the released GenSPP reads and the one this reproduction's artifact
-holds.
+The rerun reads `genetic/data/toy_dataset.pkl` in its place.
+The authors confirm that the two files hold the same corpus, which is the one
+the released GenSPP reads and this reproduction's artifact holds.
 GenSPP ran from the same branch, whose `genetic/` is unchanged from `2b447a2`,
 under the versions it used on Toy.
 The environment of each run is listed under Reproducibility.
