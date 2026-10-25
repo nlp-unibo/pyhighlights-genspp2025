@@ -144,25 +144,22 @@ Clf-F1 is macro F1, Hl-F1 is token-level highlight F1, and R is the selection
 rate, all in percent.
 The selection size counts characters on Toy and words on HateXplain.
 Each cell gives the reproduced value first and the published value second.
-The G-RAT rows on both corpora come from runs that took the argmax of the
-selection at evaluation.
-G-RAT now samples it as the other baselines do, and those rows await a rerun.
 
 | Toy | Clf-F1 | Hl-F1 | R | Size |
 |---|---|---|---|---|
 | FR | 91.47 ± 13.71 / 99.78 ± 0.20 | 30.15 ± 12.85 / 54.07 ± 4.02 | 14.99 ± 0.37 / 14.80 ± 0.24 | 3.00 ± 0.07 / 2.96 ± 0.05 |
 | MGR | 99.81 ± 0.14 / 99.92 ± 0.04 | 50.74 ± 4.74 / 50.34 ± 11.23 | 14.70 ± 0.23 / 15.05 ± 0.80 | 2.94 ± 0.05 / 3.01 ± 0.16 |
 | MCD | 99.86 ± 0.20 / 99.90 ± 0.04 | 63.35 ± 1.49 / 65.70 ± 3.76 | 15.11 ± 0.39 / 15.18 ± 0.17 | 3.02 ± 0.08 / 3.04 ± 0.03 |
-| G-RAT | 99.67 ± 0.58 / 99.36 ± 0.82 | 55.92 ± 16.68 / 50.22 ± 7.78 | 14.32 ± 1.22 / 14.81 ± 0.51 | 2.86 ± 0.24 / 2.96 ± 0.10 |
+| G-RAT | 98.81 ± 2.21 / 99.36 ± 0.82 | 50.35 ± 11.69 / 50.22 ± 7.78 | 14.35 ± 0.33 / 14.81 ± 0.51 | 2.87 ± 0.07 / 2.96 ± 0.10 |
 | GenSPP | 99.56 ± 0.30 / 99.00 ± 0.25 | 66.00 ± 4.72 / 76.02 ± 0.64 | 8.42 ± 1.12 / 11.47 ± 0.49 | 1.68 ± 0.22 / 2.29 ± 0.08 |
 
 MGR, MCD and G-RAT reproduce within about one published standard deviation
 on highlight F1, selection rate and selection size.
-Their macro F1 differs from the published one by at most 0.31 points.
+Their macro F1 differs from the published one by at most 0.55 points.
 For MGR, that gap of 0.11 points is 2.7 published standard deviations, since
 the published spread is 0.04.
 G-RAT reaches this mean with a wide spread, since its highlight F1 ranges from
-39.5 to 79.3 across seeds.
+39.1 to 67.1 across seeds.
 
 FR does not reproduce.
 Seed 2001 reaches a macro F1 of 67.3 and a highlight F1 of 14.7.
@@ -184,11 +181,11 @@ The section on the release below explains this gap.
 | FR | 73.24 ± 1.35 / 72.14 ± 1.12 | 35.67 ± 0.64 / 31.15 ± 2.56 | 23.22 ± 1.04 / 25.55 ± 0.72 | 3.36 ± 0.14 / 3.46 ± 0.11 |
 | MGR | 70.66 ± 1.21 / 71.14 ± 1.16 | 29.40 ± 1.33 / 29.38 ± 4.83 | 24.06 ± 0.72 / 25.30 ± 1.04 | 3.43 ± 0.11 / 3.42 ± 0.06 |
 | MCD | 64.67 ± 9.12 / 70.37 ± 1.06 | 25.35 ± 6.69 / 27.92 ± 1.66 | 23.11 ± 1.67 / 25.07 ± 1.52 | 3.40 ± 0.23 / 3.50 ± 0.20 |
-| G-RAT | 74.26 ± 0.71 / 73.85 ± 1.05 | 38.25 ± 0.99 / 36.17 ± 1.62 | 24.31 ± 0.57 / 24.68 ± 0.86 | 3.35 ± 0.08 / 3.34 ± 0.08 |
+| G-RAT | 74.20 ± 0.80 / 73.85 ± 1.05 | 37.31 ± 1.09 / 36.17 ± 1.62 | 24.80 ± 0.71 / 24.68 ± 0.86 | 3.45 ± 0.08 / 3.34 ± 0.08 |
 | GenSPP | 67.97 ± 1.69 / 69.71 ± 0.40 | 37.53 ± 3.40 / 42.62 ± 0.73 | 7.41 ± 0.63 / 6.51 ± 0.58 | 0.99 ± 0.07 / 0.75 ± 0.05 |
 
-MGR and G-RAT reproduce within about one published standard deviation on
-every column.
+MGR and G-RAT reproduce within 1.4 published standard deviations on every
+column.
 FR classifies as published, but its highlight F1 is 4.52 points above the
 published one while its selection rate is 2.33 points below.
 
@@ -487,20 +484,18 @@ The four baselines sample their selection at evaluation.
 `selection.py` seeds each run's draw with that run's seed, so its rows
 reproduce.
 They still score another draw than the run's own test metrics.
-The G-RAT checkpoints were trained before G-RAT sampled at evaluation, and
-their rows await the rerun.
 
 | Toy, test split | Own accuracy | Complete, positional | Complete, string |
 |---|---|---|---|
 | FR | 92.59 ± 11.28 | 8.81 ± 8.53 | 8.97 ± 8.55 |
 | MGR | 99.74 ± 0.17 | 22.03 ± 10.87 | 22.18 ± 10.67 |
 | MCD | 99.83 ± 0.17 | 56.11 ± 6.12 | 56.13 ± 6.02 |
-| G-RAT | 98.39 ± 3.18 | 27.26 ± 17.45 | 27.51 ± 17.52 |
+| G-RAT | 98.74 ± 2.57 | 21.91 ± 13.59 | 22.19 ± 13.80 |
 | GenSPP | 99.56 ± 0.30 | 3.23 ± 2.23 | 3.90 ± 2.57 |
 | GenSPP, release rerun | 99.61 ± 0.23 | - | 6.59 ± 0.43 |
 
 Every model except FR and G-RAT classifies at 99% or above, FR at 92.6% and
-G-RAT at 98.4%.
+G-RAT at 98.7%.
 At most 56% of a model's selections contain the evidence, and only MCD
 exceeds a third.
 Every predictor therefore decodes the label from something other than the
@@ -538,9 +533,9 @@ highlight.
 A code of `aa` or `bc` reads as evidence, and a lone `b` does not.
 
 The baselines mostly mark a class by the size of the selection.
-In 15 of their 20 runs, one class receives an empty selection in at least
+In 14 of their 20 runs, one class receives an empty selection in at least
 90% of its test examples.
-In 14 of those 15 runs, the other two classes receive 2.65 to 6.15
+In 13 of those 14 runs, the other two classes receive 2.65 to 6.15
 characters on average, which keeps the average selection size near the sparsity target of
 three.
 
@@ -552,7 +547,7 @@ Highlight F1 and the complete-highlight rate measure different things as a
 result.
 Highlight F1 gives partial credit for partial overlap, while the
 complete-highlight rate scores a selection as either complete or not.
-Across the 20 baseline runs, the Pearson correlation between the two is 0.74.
+Across the 20 baseline runs, the Pearson correlation between the two is 0.76.
 GenSPP lies outside that trend, with a highlight F1 between 0.61 and 0.71 and
 a mean complete-highlight rate of 3.23%.
 It ranks first on highlight F1 and last on the complete-highlight rate.
