@@ -202,16 +202,16 @@ wheels = [
 
 [[package]]
 name = "cinnamon-core"
-version = "2.2.1"
+version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "networkx", version = "3.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "networkx", version = "3.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c5/35/2fb9d80703dc5e98fb767ffa374db3d9bdcb2baeb34eebc460d017365186/cinnamon_core-2.2.1.tar.gz", hash = "sha256:9a46c6ddcefd23528db2a51bab6c67bf619d66297a2d55cde32b7516cddd4868", size = 129216, upload-time = "2026-09-30T16:09:45.435Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/89/af547fc1854e119f6fcd2c51808884c7d509689e89de3fbb1697ddfc31cf/cinnamon_core-2.3.0.tar.gz", hash = "sha256:916f73f16e4640365db39f92843343634f14588820d829f552223f7dcaf015d3", size = 134987, upload-time = "2026-10-26T10:18:39.007Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/d3/a85697902d4e40f9daa8f26f652cc019da6667123abe77dc55e89c1f6a62/cinnamon_core-2.2.1-py3-none-any.whl", hash = "sha256:e06a76a9b4bb5e164e9156e76911d7988ef14e8a17e67c6c7a5f89092eaa49f1", size = 66142, upload-time = "2026-09-30T16:09:43.683Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/01/43ecd71cdf6709a65bee5c8793a733308ee9345dd50eb72d00ced36f1d83/cinnamon_core-2.3.0-py3-none-any.whl", hash = "sha256:a129ec0c84a816d05c650f94ec574fd03180078ee0574377a6052783bcf0a4a4", size = 68272, upload-time = "2026-10-26T10:18:37.473Z" },
 ]
 
 [[package]]
@@ -472,6 +472,7 @@ name = "genspp2025"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "cinnamon-core" },
     { name = "pandas", version = "2.3.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pandas", version = "3.0.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pyhighlights" },
@@ -486,6 +487,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "cinnamon-core", specifier = ">=2.3.0,<3" },
     { name = "pandas", specifier = ">=2.0.0" },
     { name = "pyhighlights", url = "https://github.com/nlp-unibo/pyhighlights/archive/d245d98fdac07a9c9fdb2472afe9c5acc12eaa38.tar.gz" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },

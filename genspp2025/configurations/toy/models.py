@@ -12,26 +12,26 @@ from pyhighlights.configurations.grat import GRUGRATConfig, GuidanceGuiderConfig
 from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-)
 from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )
 from genspp2025.configurations.toy.keys import (
     TOY_BACKBONE,
+    TOY_FR,
+    TOY_GENSPP,
     TOY_GENSPP_BACKBONE,
+    TOY_GRAT,
     TOY_GUIDER,
+    TOY_MCD,
+    TOY_MGR,
     TOY_PREDICTOR,
     TOY_UNNORMALISED_BACKBONE,
 )
 
 
 @register_class(
-    name="predictor",
-    tags={"toy"},
-    namespace=NAMESPACE,
+    key=TOY_PREDICTOR,
     component="pyhighlights.components.models.spp.implementations.MLPPredictor",
 )
 class ToyPredictorConfig(MLPPredictorConfig):
@@ -39,10 +39,7 @@ class ToyPredictorConfig(MLPPredictorConfig):
 
 
 @register_class(
-    name="guider",
-    tags={"toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.grat.GuidanceGuider",
+    key=TOY_GUIDER, component="pyhighlights.components.models.spp.grat.GuidanceGuider"
 )
 class ToyGuiderConfig(GuidanceGuiderConfig):
     """The original guidance module, sized as the baselines' encoder."""
@@ -54,23 +51,13 @@ class ToyGuiderConfig(GuidanceGuiderConfig):
     freeze_embeddings: bool | None = Param(True)
 
 
-@register_class(
-    name="model",
-    tags={"fr", "toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.fr.FR",
-)
+@register_class(key=TOY_FR, component="pyhighlights.components.models.spp.fr.FR")
 class ToyFRConfig(GRUFRConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
     predictor: RegistrationKey[SPPPredictor] = Param(TOY_PREDICTOR)
 
 
-@register_class(
-    name="model",
-    tags={"mgr", "toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.mgr.MGR",
-)
+@register_class(key=TOY_MGR, component="pyhighlights.components.models.spp.mgr.MGR")
 class ToyMGRConfig(GRUMGRConfig):
     selector_backbones: List[RegistrationKey[SPPBackbone]] = Param(
         [TOY_BACKBONE, TOY_BACKBONE, TOY_BACKBONE]
@@ -79,12 +66,7 @@ class ToyMGRConfig(GRUMGRConfig):
     predictor: RegistrationKey[SPPPredictor] = Param(TOY_PREDICTOR)
 
 
-@register_class(
-    name="model",
-    tags={"mcd", "toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.mcd.MCD",
-)
+@register_class(key=TOY_MCD, component="pyhighlights.components.models.spp.mcd.MCD")
 class ToyMCDConfig(GRUMCDConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
     predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_UNNORMALISED_BACKBONE)
@@ -95,12 +77,7 @@ class ToyMCDConfig(GRUMCDConfig):
     )
 
 
-@register_class(
-    name="model",
-    tags={"grat", "toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.grat.GRAT",
-)
+@register_class(key=TOY_GRAT, component="pyhighlights.components.models.spp.grat.GRAT")
 class ToyGRATConfig(GRUGRATConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
     predictor_backbone: RegistrationKey[SPPBackbone] = Param(TOY_BACKBONE)
@@ -115,10 +92,7 @@ class ToyGRATConfig(GRUGRATConfig):
 
 
 @register_class(
-    name="model",
-    tags={"genspp", "toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.genspp.GenSPP",
+    key=TOY_GENSPP, component="pyhighlights.components.models.spp.genspp.GenSPP"
 )
 class ToyGenSPPConfig(GRUGenSPPConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(TOY_GENSPP_BACKBONE)

@@ -4,9 +4,7 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.datasets import LoaderConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-)
+from genspp2025.configurations.toy.keys import TOY
 
 #: The Zenodo **version** record the artifact is fetched from, rather than the
 #: concept one: the digest below pins these exact bytes, and a concept DOI
@@ -29,12 +27,7 @@ URL = f"https://zenodo.org/api/records/{RECORD}/files/{ARCHIVE}/content"
 SHA256 = "f44ed02017cfde635b8ba3bc11bcf468e1d467d83634a96d698505574127431f"
 
 
-@register_class(
-    name="dataset",
-    tags={"toy"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.loaders.ToyLoader",
-)
+@register_class(key=TOY, component="pyhighlights.components.loaders.ToyLoader")
 class ToyConfig(LoaderConfig):
     """The released corpus, not a regenerated one.
 

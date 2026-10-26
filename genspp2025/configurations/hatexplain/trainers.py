@@ -9,17 +9,15 @@ from pyhighlights.configurations.genspp import GRUGenSPPTrainerConfig
 
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_GENSPP,
+    HATEXPLAIN_GENSPP_G150_TRAINER,
+    HATEXPLAIN_GENSPP_SMOKE_TRAINER,
+    HATEXPLAIN_GENSPP_TRAINER,
 )
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-    WORKERS,
-)
+from genspp2025.configurations.keys import WORKERS
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "hatexplain"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_GENSPP_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class HateXplainGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
@@ -35,9 +33,7 @@ class HateXplainGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "hatexplain", "smoke"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_GENSPP_SMOKE_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class HateXplainGenSPPSmokeTrainerConfig(HateXplainGenSPPTrainerConfig):
@@ -53,9 +49,7 @@ class HateXplainGenSPPSmokeTrainerConfig(HateXplainGenSPPTrainerConfig):
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "hatexplain", "g150"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_GENSPP_G150_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class HateXplainGenSPPG150TrainerConfig(HateXplainGenSPPTrainerConfig):

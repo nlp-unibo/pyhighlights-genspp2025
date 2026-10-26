@@ -4,12 +4,14 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.backbones import GRUBackboneConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-)
 from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
+)
+from genspp2025.configurations.toy.keys import (
+    TOY_BACKBONE,
+    TOY_GENSPP_BACKBONE,
+    TOY_UNNORMALISED_BACKBONE,
 )
 
 GRU_BACKBONE_COMPONENT = (
@@ -17,9 +19,7 @@ GRU_BACKBONE_COMPONENT = (
 )
 
 
-@register_class(
-    name="backbone", tags={"toy"}, namespace=NAMESPACE, component=GRU_BACKBONE_COMPONENT
-)
+@register_class(key=TOY_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class ToyBackboneConfig(GRUBackboneConfig):
     """The baselines' encoder, reading a one-hot table of the alphabet."""
 
@@ -30,24 +30,14 @@ class ToyBackboneConfig(GRUBackboneConfig):
     dropout_rate: float = Param(0.0, ge=0.0, lt=1.0)
 
 
-@register_class(
-    name="backbone",
-    tags={"toy", "unnormalised"},
-    namespace=NAMESPACE,
-    component=GRU_BACKBONE_COMPONENT,
-)
+@register_class(key=TOY_UNNORMALISED_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class ToyUnnormalisedBackboneConfig(ToyBackboneConfig):
     """The MCD and MGR predictors' encoder, unnormalised as in their originals."""
 
     layer_norm: bool = Param(False)
 
 
-@register_class(
-    name="backbone",
-    tags={"genspp", "toy"},
-    namespace=NAMESPACE,
-    component=GRU_BACKBONE_COMPONENT,
-)
+@register_class(key=TOY_GENSPP_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class ToyGenSPPBackboneConfig(ToyBackboneConfig):
     """The genetic half's encoder: one direction, the same table.
 

@@ -8,7 +8,7 @@ import pandas as pd
 import pyhighlights
 import pytest
 import torch as th
-from cinnamon.registry import Registry
+from cinnamon.registry import RegistrationKey, Registry
 from pyhighlights.components.loaders import ToyLoader
 from pyhighlights.components.models.spp.genspp import GenSPPTrainer
 from pyhighlights.components.models.spp.grat import GuidanceGuider
@@ -19,6 +19,8 @@ from pyhighlights.utility.embeddings import one_hot_table
 import genspp2025
 import run
 from genspp2025.components.corpora import ReleasedToyLoader
+from genspp2025.configurations import keys
+from genspp2025.configurations.hatexplain import keys as hatexplain_keys
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR,
     HATEXPLAIN_FR_TASK,
@@ -38,6 +40,7 @@ from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )
+from genspp2025.configurations.toy import keys as toy_keys
 from genspp2025.configurations.toy.datasets import ARCHIVE, RECORD, SHA256
 from genspp2025.configurations.toy.keys import (
     TOY,
@@ -89,6 +92,30 @@ def test_both_corpora_register():
     # second script needs the re-entrant registration context of cinnamon 2.0.2.
     assert len([key for key in paper if "toy" in key.tags]) >= 16
     assert len([key for key in paper if "hatexplain" in key.tags]) >= 22
+
+
+def test_every_declared_key_is_registered():
+    """Each key in the three ``keys.py`` modules names a registration.
+
+    ``Registry.build`` reads the namespace behind a ``key=`` registration
+    before importing anything, and follows it only to a ``Namespace``
+    literal. A key computed any other way leaves the reproduction's namespace
+    unmapped, so a script building it as an external directory finds nothing.
+    """
+    directory = Path(genspp2025.__file__).parent
+    _, mapping = Registry.parse_configuration_files([directory])
+    assert mapping.get(keys.NAMESPACE) == directory
+
+    build_registry()
+    declared = {
+        f"{module.__name__}.{name}": value
+        for module in (keys, toy_keys, hatexplain_keys)
+        for name, value in vars(module).items()
+        if isinstance(value, RegistrationKey)
+    }
+
+    assert declared
+    assert not [name for name, key in declared.items() if not Registry.in_registry(key)]
 
 
 def test_the_released_hyperparameters_are_what_is_registered():

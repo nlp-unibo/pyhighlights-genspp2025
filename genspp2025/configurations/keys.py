@@ -4,9 +4,9 @@ Its own namespace, so the paper's HateXplain, filtered to short posts and
 folded to two classes, never stands in for the corpus as distributed.
 """
 
-from cinnamon.registry import RegistrationKey
+from cinnamon.registry import Namespace
 
-NAMESPACE = "genspp2025"
+NAMESPACE = Namespace("genspp2025")
 
 #: The five seeds every baseline number averages over, which are the ones the
 #: release's baselines use.
@@ -29,11 +29,7 @@ GENSPP_SEEDS = [1, 2, 3, 4, 5]
 WORKERS = ["cpu"] * 8
 
 
-def key(name: str, *tags: str) -> RegistrationKey:
-    return RegistrationKey(name=name, tags=set(tags), namespace=NAMESPACE)
-
-
 #: The paper waits thirty epochs before giving up on a five-hundred-epoch
 #: budget, which is the reproduction's policy rather than the library's.
-PAPER_EARLY_STOPPING = key("callback", "early_stopping")
-PAPER_CHECKPOINT = key("callback", "checkpoint")
+PAPER_EARLY_STOPPING = NAMESPACE.key("callback", "early_stopping")
+PAPER_CHECKPOINT = NAMESPACE.key("callback", "checkpoint")

@@ -7,10 +7,8 @@ from cinnamon.registry import RegistrationKey, register_class
 from pyhighlights.components.tasks import Task
 from pyhighlights.configurations.benchmarks import BenchmarkConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-)
 from genspp2025.configurations.toy.keys import (
+    TOY_BENCHMARK,
     TOY_FR_TASK,
     TOY_GENSPP_TASK,
     TOY_GRAT_TASK,
@@ -20,9 +18,7 @@ from genspp2025.configurations.toy.keys import (
 
 
 @register_class(
-    name="benchmark",
-    tags={"toy"},
-    namespace=NAMESPACE,
+    key=TOY_BENCHMARK,
     component="pyhighlights.components.benchmarks.Benchmark",
     run_method="run",
 )

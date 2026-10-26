@@ -7,19 +7,18 @@ from cinnamon.registry import RegistrationKey, register_class
 from pyhighlights.components.models.spp.genspp import GenSPP
 from pyhighlights.configurations.genspp import GRUGenSPPTrainerConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-    WORKERS,
-)
+from genspp2025.configurations.keys import WORKERS
 from genspp2025.configurations.toy.keys import (
     TOY_GENSPP,
+    TOY_GENSPP_G150_TRAINER,
+    TOY_GENSPP_RELEASED_THRESHOLD_TRAINER,
+    TOY_GENSPP_SMOKE_TRAINER,
+    TOY_GENSPP_TRAINER,
 )
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "toy"},
-    namespace=NAMESPACE,
+    key=TOY_GENSPP_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class ToyGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
@@ -31,9 +30,7 @@ class ToyGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "toy", "released-threshold"},
-    namespace=NAMESPACE,
+    key=TOY_GENSPP_RELEASED_THRESHOLD_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class ToyGenSPPReleasedThresholdTrainerConfig(ToyGenSPPTrainerConfig):
@@ -48,9 +45,7 @@ class ToyGenSPPReleasedThresholdTrainerConfig(ToyGenSPPTrainerConfig):
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "toy", "smoke"},
-    namespace=NAMESPACE,
+    key=TOY_GENSPP_SMOKE_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class ToyGenSPPSmokeTrainerConfig(ToyGenSPPTrainerConfig):
@@ -69,9 +64,7 @@ class ToyGenSPPSmokeTrainerConfig(ToyGenSPPTrainerConfig):
 
 
 @register_class(
-    name="trainer",
-    tags={"genspp", "toy", "g150"},
-    namespace=NAMESPACE,
+    key=TOY_GENSPP_G150_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
 class ToyGenSPPG150TrainerConfig(ToyGenSPPTrainerConfig):

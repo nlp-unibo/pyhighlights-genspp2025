@@ -52,6 +52,10 @@ dependencies = [
     # arrives through pyhighlights as well; a floor of ours on something we
     # import ourselves is not a floor to inherit.
     "pandas>=2.0.0",
+    # Named directly because every configuration module registers through it.
+    # 2.3.0: `Namespace` and registration by `key=`, which `keys.py` and every
+    # registration here use. On 2.2.1 the keys modules fail to import.
+    "cinnamon-core>=2.3.0,<3",
 ]
 
 [project.optional-dependencies]
