@@ -4,8 +4,10 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.backbones import GRUBackboneConfig
 
-from genspp2025.configurations.keys import (
-    NAMESPACE,
+from genspp2025.configurations.hatexplain.keys import (
+    HATEXPLAIN_BACKBONE,
+    HATEXPLAIN_GENSPP_BACKBONE,
+    HATEXPLAIN_UNNORMALISED_BACKBONE,
 )
 
 GRU_BACKBONE_COMPONENT = (
@@ -13,12 +15,7 @@ GRU_BACKBONE_COMPONENT = (
 )
 
 
-@register_class(
-    name="backbone",
-    tags={"hatexplain"},
-    namespace=NAMESPACE,
-    component=GRU_BACKBONE_COMPONENT,
-)
+@register_class(key=HATEXPLAIN_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class HateXplainBackboneConfig(GRUBackboneConfig):
     """The baselines' encoder, embedding from the GloVe table the task reads."""
 
@@ -34,24 +31,14 @@ class HateXplainBackboneConfig(GRUBackboneConfig):
     dropout_rate: float = Param(0.0, ge=0.0, lt=1.0)
 
 
-@register_class(
-    name="backbone",
-    tags={"hatexplain", "unnormalised"},
-    namespace=NAMESPACE,
-    component=GRU_BACKBONE_COMPONENT,
-)
+@register_class(key=HATEXPLAIN_UNNORMALISED_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class HateXplainUnnormalisedBackboneConfig(HateXplainBackboneConfig):
     """The MCD and MGR predictors' encoder, unnormalised as in their originals."""
 
     layer_norm: bool = Param(False)
 
 
-@register_class(
-    name="backbone",
-    tags={"genspp", "hatexplain"},
-    namespace=NAMESPACE,
-    component=GRU_BACKBONE_COMPONENT,
-)
+@register_class(key=HATEXPLAIN_GENSPP_BACKBONE, component=GRU_BACKBONE_COMPONENT)
 class HateXplainGenSPPBackboneConfig(HateXplainBackboneConfig):
     bidirectional: bool = Param(False)
     #: The released GenSPP encoder passes the GRU states on unnormalised.

@@ -14,16 +14,12 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_AGGREGATOR,
     HATEXPLAIN_LABEL_MAPPER,
     HATEXPLAIN_LENGTH_FILTER,
-)
-from genspp2025.configurations.keys import (
-    NAMESPACE,
+    HATEXPLAIN_PIPELINE,
 )
 
 
 @register_class(
-    name="preprocessor",
-    tags={"hatexplain", "length"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_LENGTH_FILTER,
     component="pyhighlights.components.preprocessors.LengthFilter",
 )
 class LengthFilterConfig(Configuration):
@@ -33,9 +29,7 @@ class LengthFilterConfig(Configuration):
 
 
 @register_class(
-    name="preprocessor",
-    tags={"hatexplain", "labels"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_LABEL_MAPPER,
     component="pyhighlights.components.preprocessors.LabelMapper",
 )
 class LabelMapperConfig(Configuration):
@@ -46,9 +40,7 @@ class LabelMapperConfig(Configuration):
 
 
 @register_class(
-    name="preprocessor",
-    tags={"aggregator", "hatexplain"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_AGGREGATOR,
     component="pyhighlights.components.preprocessors.AnnotationAggregator",
 )
 class AggregatorConfig(Configuration):
@@ -60,10 +52,7 @@ class AggregatorConfig(Configuration):
 
 
 @register_class(
-    name="preprocessor",
-    tags={"hatexplain", "pipeline"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.preprocessors.Pipeline",
+    key=HATEXPLAIN_PIPELINE, component="pyhighlights.components.preprocessors.Pipeline"
 )
 class HateXplainPipelineConfig(PipelineConfig):
     """Filter, fold, then reduce, in that order."""

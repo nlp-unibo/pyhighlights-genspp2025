@@ -11,9 +11,6 @@ from genspp2025.configurations.common import (
     PaperGenSPPTaskConfig,
     PaperTaskConfig,
 )
-from genspp2025.configurations.keys import (
-    NAMESPACE,
-)
 from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
@@ -21,10 +18,15 @@ from genspp2025.configurations.toy import (
 from genspp2025.configurations.toy.keys import (
     TOY,
     TOY_FR,
+    TOY_FR_TASK,
+    TOY_GENSPP_TASK,
     TOY_GENSPP_TRAINER,
     TOY_GRAT,
+    TOY_GRAT_TASK,
     TOY_MCD,
+    TOY_MCD_TASK,
     TOY_MGR,
+    TOY_MGR_TASK,
 )
 
 SPP_TASK_COMPONENT = "pyhighlights.components.tasks.SPPTask"
@@ -42,58 +44,32 @@ class ToyTaskConfig(PaperTaskConfig):
     one_hot_embeddings: int = Param(EMBEDDING_DIM, ge=1)
 
 
-@register_class(
-    name="task",
-    tags={"fr", "toy"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=TOY_FR_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class ToyFRTaskConfig(ToyTaskConfig):
     name: str = Param("toy-fr")
     model: RegistrationKey[Model] = Param(TOY_FR)
 
 
-@register_class(
-    name="task",
-    tags={"mgr", "toy"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=TOY_MGR_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class ToyMGRTaskConfig(ToyTaskConfig):
     name: str = Param("toy-mgr")
     model: RegistrationKey[Model] = Param(TOY_MGR)
 
 
-@register_class(
-    name="task",
-    tags={"mcd", "toy"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=TOY_MCD_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class ToyMCDTaskConfig(ToyTaskConfig):
     name: str = Param("toy-mcd")
     model: RegistrationKey[Model] = Param(TOY_MCD)
 
 
-@register_class(
-    name="task",
-    tags={"grat", "toy"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=TOY_GRAT_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class ToyGRATTaskConfig(ToyTaskConfig):
     name: str = Param("toy-grat")
     model: RegistrationKey[Model] = Param(TOY_GRAT)
 
 
 @register_class(
-    name="task",
-    tags={"genspp", "toy"},
-    namespace=NAMESPACE,
+    key=TOY_GENSPP_TASK,
     component="pyhighlights.components.tasks.GenSPPTask",
     run_method="run",
 )

@@ -17,22 +17,22 @@ from pyhighlights.utility.losses import Loss
 
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_BACKBONE,
+    HATEXPLAIN_FR,
+    HATEXPLAIN_GENSPP,
     HATEXPLAIN_GENSPP_BACKBONE,
+    HATEXPLAIN_GRAT,
     HATEXPLAIN_GUIDE_LOSS,
     HATEXPLAIN_GUIDER,
     HATEXPLAIN_JSD_LOSS,
+    HATEXPLAIN_MCD,
+    HATEXPLAIN_MGR,
     HATEXPLAIN_SPARSITY_LOSS,
     HATEXPLAIN_UNNORMALISED_BACKBONE,
-)
-from genspp2025.configurations.keys import (
-    NAMESPACE,
 )
 
 
 @register_class(
-    name="guider",
-    tags={"hatexplain"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_GUIDER,
     component="pyhighlights.components.models.spp.grat.GuidanceGuider",
 )
 class HateXplainGuiderConfig(GuidanceGuiderConfig):
@@ -46,12 +46,7 @@ class HateXplainGuiderConfig(GuidanceGuiderConfig):
     freeze_embeddings: bool | None = Param(True)
 
 
-@register_class(
-    name="model",
-    tags={"fr", "hatexplain"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.fr.FR",
-)
+@register_class(key=HATEXPLAIN_FR, component="pyhighlights.components.models.spp.fr.FR")
 class HateXplainFRConfig(GRUFRConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
     losses: List[RegistrationKey[Loss]] = Param(
@@ -60,10 +55,7 @@ class HateXplainFRConfig(GRUFRConfig):
 
 
 @register_class(
-    name="model",
-    tags={"hatexplain", "mgr"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.mgr.MGR",
+    key=HATEXPLAIN_MGR, component="pyhighlights.components.models.spp.mgr.MGR"
 )
 class HateXplainMGRConfig(GRUMGRConfig):
     selector_backbones: List[RegistrationKey[SPPBackbone]] = Param(
@@ -78,10 +70,7 @@ class HateXplainMGRConfig(GRUMGRConfig):
 
 
 @register_class(
-    name="model",
-    tags={"hatexplain", "mcd"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.mcd.MCD",
+    key=HATEXPLAIN_MCD, component="pyhighlights.components.models.spp.mcd.MCD"
 )
 class HateXplainMCDConfig(GRUMCDConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
@@ -100,10 +89,7 @@ class HateXplainMCDConfig(GRUMCDConfig):
 
 
 @register_class(
-    name="model",
-    tags={"grat", "hatexplain"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.grat.GRAT",
+    key=HATEXPLAIN_GRAT, component="pyhighlights.components.models.spp.grat.GRAT"
 )
 class HateXplainGRATConfig(GRUGRATConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_BACKBONE)
@@ -126,10 +112,7 @@ class HateXplainGRATConfig(GRUGRATConfig):
 
 
 @register_class(
-    name="model",
-    tags={"genspp", "hatexplain"},
-    namespace=NAMESPACE,
-    component="pyhighlights.components.models.spp.genspp.GenSPP",
+    key=HATEXPLAIN_GENSPP, component="pyhighlights.components.models.spp.genspp.GenSPP"
 )
 class HateXplainGenSPPConfig(GRUGenSPPConfig):
     selector_backbones: RegistrationKey[SPPBackbone] = Param(HATEXPLAIN_GENSPP_BACKBONE)

@@ -14,14 +14,16 @@ from genspp2025.configurations.common import (
 )
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR,
+    HATEXPLAIN_FR_TASK,
+    HATEXPLAIN_GENSPP_TASK,
     HATEXPLAIN_GENSPP_TRAINER,
     HATEXPLAIN_GRAT,
+    HATEXPLAIN_GRAT_TASK,
     HATEXPLAIN_MCD,
+    HATEXPLAIN_MCD_TASK,
     HATEXPLAIN_MGR,
+    HATEXPLAIN_MGR_TASK,
     HATEXPLAIN_PIPELINE,
-)
-from genspp2025.configurations.keys import (
-    NAMESPACE,
 )
 
 SPP_TASK_COMPONENT = "pyhighlights.components.tasks.SPPTask"
@@ -43,48 +45,26 @@ class HateXplainTaskConfig(PaperTaskConfig):
     pretrained_tokens_only: bool = Param(False)
 
 
-@register_class(
-    name="task",
-    tags={"fr", "hatexplain"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=HATEXPLAIN_FR_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class HateXplainFRTaskConfig(HateXplainTaskConfig):
     name: str = Param("hatexplain-fr")
     model: RegistrationKey[Model] = Param(HATEXPLAIN_FR)
 
 
-@register_class(
-    name="task",
-    tags={"hatexplain", "mgr"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=HATEXPLAIN_MGR_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class HateXplainMGRTaskConfig(HateXplainTaskConfig):
     name: str = Param("hatexplain-mgr")
     model: RegistrationKey[Model] = Param(HATEXPLAIN_MGR)
 
 
-@register_class(
-    name="task",
-    tags={"hatexplain", "mcd"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
-)
+@register_class(key=HATEXPLAIN_MCD_TASK, component=SPP_TASK_COMPONENT, run_method="run")
 class HateXplainMCDTaskConfig(HateXplainTaskConfig):
     name: str = Param("hatexplain-mcd")
     model: RegistrationKey[Model] = Param(HATEXPLAIN_MCD)
 
 
 @register_class(
-    name="task",
-    tags={"grat", "hatexplain"},
-    namespace=NAMESPACE,
-    component=SPP_TASK_COMPONENT,
-    run_method="run",
+    key=HATEXPLAIN_GRAT_TASK, component=SPP_TASK_COMPONENT, run_method="run"
 )
 class HateXplainGRATTaskConfig(HateXplainTaskConfig):
     name: str = Param("hatexplain-grat")
@@ -92,9 +72,7 @@ class HateXplainGRATTaskConfig(HateXplainTaskConfig):
 
 
 @register_class(
-    name="task",
-    tags={"genspp", "hatexplain"},
-    namespace=NAMESPACE,
+    key=HATEXPLAIN_GENSPP_TASK,
     component="pyhighlights.components.tasks.GenSPPTask",
     run_method="run",
 )

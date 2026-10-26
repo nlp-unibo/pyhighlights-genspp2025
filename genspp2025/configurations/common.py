@@ -25,7 +25,6 @@ from pyhighlights.utility.metrics import BoundMetric
 
 from genspp2025.configurations.keys import (
     GENSPP_SEEDS,
-    NAMESPACE,
     PAPER_CHECKPOINT,
     PAPER_EARLY_STOPPING,
     SEEDS,
@@ -119,9 +118,7 @@ class PaperGenSPPTaskConfig(Configuration):
 
 
 @register_class(
-    name="callback",
-    tags={"early_stopping"},
-    namespace=NAMESPACE,
+    key=PAPER_EARLY_STOPPING,
     component="pyhighlights.components.callbacks.WarmupEarlyStopping",
 )
 class PaperEarlyStoppingConfig(Configuration):
@@ -133,9 +130,7 @@ class PaperEarlyStoppingConfig(Configuration):
 
 
 @register_class(
-    name="callback",
-    tags={"checkpoint"},
-    namespace=NAMESPACE,
+    key=PAPER_CHECKPOINT,
     component="pyhighlights.components.callbacks.WarmupModelCheckpoint",
 )
 class PaperCheckpointConfig(Configuration):
