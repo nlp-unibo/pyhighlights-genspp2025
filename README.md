@@ -223,12 +223,12 @@ The release scores GenSPP's Hl-F1 on a post only up to the post's first token un
 
 | GenSPP on HateXplain | Scoring | Hl-F1 |
 |---|---|---|
-| Published | - | 42.62 ± 0.73 |
+| Published | Release's | 42.62 ± 0.73 |
 | Release | Release's | 43.09 ± 2.73 |
 | Here | Release's | 40.80 ± 3.20 |
 | Here | Every token | 37.53 ± 3.40 |
 
-The release is within one published standard deviation of the published value under its own scoring.
+The published value is scored the release's way, and the release lies within one published standard deviation of it.
 The scoring accounts for 3.27 of the 5.09 points between this reproduction and the published value.
 The remaining 2.29 points, between the release and this reproduction under the same scoring, are within one standard deviation of either set of five seeds.
 The two code bases differ in every row of the [Data](#data) and [GenSPP](#genspp) tables, including the validation rows and the embeddings of tokens that GloVe lacks.
