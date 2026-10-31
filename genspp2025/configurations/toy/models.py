@@ -12,7 +12,7 @@ from pyhighlights.configurations.grat import GRUGRATConfig, GuidanceGuiderConfig
 from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
 
-from genspp2025.configurations.toy import (
+from genspp2025.configurations.toy.constants import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )

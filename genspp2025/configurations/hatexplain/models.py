@@ -15,7 +15,7 @@ from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
 from pyhighlights.utility.losses import Loss
 
-from genspp2025.configurations.hatexplain import EMBEDDING_DIM
+from genspp2025.configurations.hatexplain.constants import EMBEDDING_DIM
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_BACKBONE,
     HATEXPLAIN_FR,

@@ -35,11 +35,11 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_SPARSITY,
     HATEXPLAIN_SPARSITY_LOSS,
 )
-from genspp2025.configurations.toy import (
+from genspp2025.configurations.toy import keys as toy_keys
+from genspp2025.configurations.toy.constants import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )
-from genspp2025.configurations.toy import keys as toy_keys
 from genspp2025.configurations.toy.datasets import ARCHIVE, RECORD, SHA256
 from genspp2025.configurations.toy.keys import (
     TOY,

@@ -4,7 +4,7 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.backbones import GRUBackboneConfig
 
-from genspp2025.configurations.hatexplain import EMBEDDING_DIM
+from genspp2025.configurations.hatexplain.constants import EMBEDDING_DIM
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_BACKBONE,
     HATEXPLAIN_GENSPP_BACKBONE,
