@@ -18,15 +18,15 @@
 
 ## compare.py
 
-The module depends on `published`, `genspp2025.configurations` keys, and `pyhighlights.components.analyzers`.
+The module depends on `published`, the keys and task configurations of `genspp2025.configurations`, and `pyhighlights.components.analyzers`.
 `main` calls `compare` and `costs`, and both read through `rows_of` and `analyzed`.
 `analyzed` builds `PublishedRows`, a `MetricsAnalyzer` whose `reports` calls `row_of` on every run and `latest_runs` on the runs that measure a row.
-`row_of` reads a run's `manifest.json` and maps its search key through `SEARCHES` and its seeds against `SEEDS` and `GENSPP_SEEDS`.
+`row_of` reads a run's `manifest.json` and maps its search key through `SEARCHES` and its seeds against `PAPER_SEEDS`, the `seeds` default of the task configuration its name records.
 `PublishedRows.reports` calls `conflict` for a row that more than one run measures.
 
 ## run.py
 
 The module depends on `genspp2025.configurations` and `cinnamon.registry`.
 `main` calls `Registry.build`, `keys`, and `seed_list`, then runs each chosen task with `Registry.from_key`.
-`keys`, `smoke_search` and `g150_search` call `corpus_keys`.
-`main` replaces the GenSPP task's `search` with `smoke_search`, `released_threshold_search`, or `g150_search`.
+`keys` and `g150_search` call `corpus_keys`; `keys` selects the smoke task keys under `--smoke`.
+`main` replaces the GenSPP task's `search` with `released_threshold_search` or `g150_search`.

@@ -1,13 +1,10 @@
 """The genetic search over GenSPP's generator."""
 
-from typing import List
-
 from cinnamon.configuration import Param
 from cinnamon.registry import RegistrationKey, register_class
 from pyhighlights.components.models.spp.genspp import GenSPP
-from pyhighlights.configurations.genspp import GRUGenSPPTrainerConfig
 
-from genspp2025.configurations.keys import WORKERS
+from genspp2025.configurations.common import PaperGenSPPTrainerConfig
 from genspp2025.configurations.toy.keys import (
     TOY_GENSPP,
     TOY_GENSPP_G150_TRAINER,
@@ -21,12 +18,11 @@ from genspp2025.configurations.toy.keys import (
     key=TOY_GENSPP_TRAINER,
     component="pyhighlights.components.models.spp.genspp.GenSPPTrainer",
 )
-class ToyGenSPPTrainerConfig(GRUGenSPPTrainerConfig):
+class ToyGenSPPTrainerConfig(PaperGenSPPTrainerConfig):
     """The search as released: the expected cross entropy is 0.1 here."""
 
     model: RegistrationKey[GenSPP] = Param(TOY_GENSPP)
     task_loss_limit: float = Param(0.1, ge=0.0)
-    devices: List[str] = Param(WORKERS)
 
 
 @register_class(

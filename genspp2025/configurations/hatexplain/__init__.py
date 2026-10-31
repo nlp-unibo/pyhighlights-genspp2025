@@ -34,3 +34,7 @@ is a path the task is given rather than a URL it fetches::
 Leaving it out is refused rather than run: without the file there is no
 vocabulary to take.
 """
+
+#: GloVe ``twitter.27B`` at 25 dimensions. The task's replacement table is
+#: refused when its width disagrees with a backbone's or a guider's.
+EMBEDDING_DIM = 25

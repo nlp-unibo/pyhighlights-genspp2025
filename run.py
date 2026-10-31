@@ -8,8 +8,9 @@
     python run.py toy --model genspp --seeds 1-20
     python run.py toy --model genspp --g150
 
-`--smoke` bounds a baseline with ``trainer_args`` and the GenSPP cell with a
-search of its own, since a search reads no trainer argument.
+`--smoke` runs each cell's registered smoke task. A baseline's is bounded by
+``trainer_args`` and the GenSPP cell's by a search of its own, since a search
+reads no trainer argument.
 
 The registry is built over this package with the library beside it, so an edit
 here runs without reinstalling anything, which is why the container installs
@@ -35,23 +36,12 @@ import genspp2025
 
 MODELS = ("fr", "mgr", "mcd", "grat", "genspp")
 
-#: One batch and one seed: enough to say every cell builds, trains, scores and
-#: writes its files, and not enough to mean anything.
-SMOKE = {
-    "seeds": (2023,),
-    "trainer_args": {
-        "accelerator": "auto",
-        "devices": 1,
-        "max_epochs": 1,
-        "limit_train_batches": 1,
-        "limit_val_batches": 1,
-        "deterministic": True,
-    },
-}
 
-
-def keys(corpus: str):
+def keys(corpus: str, smoke: bool = False):
     """The corpus's task keys, by model name, imported only when asked for.
+
+    ``smoke`` selects the registered smoke tasks: one seed, one batch, and for
+    GenSPP a search of two candidates over one generation.
 
     Importing a corpus's keys imports its configurations, and the point of the
     package registering nothing on import is that a run says which half it
@@ -59,8 +49,10 @@ def keys(corpus: str):
     """
     module = corpus_keys(corpus)
     prefix = "TOY" if corpus == "toy" else "HATEXPLAIN"
+    suffix = "SMOKE_" if smoke else ""
     return {
-        model: getattr(module, f"{prefix}_{model.upper()}_TASK") for model in MODELS
+        model: getattr(module, f"{prefix}_{model.upper()}_{suffix}TASK")
+        for model in MODELS
     }
 
 
@@ -70,20 +62,6 @@ def corpus_keys(corpus: str):
     else:
         from genspp2025.configurations.hatexplain import keys as module
     return module
-
-
-def smoke_search(corpus: str):
-    """The search a smoke run uses instead of the paper's.
-
-    ``--smoke`` bounds a baseline with ``trainer_args``, which Lightning
-    reads. The search reads none of it, since it builds a trainer per candidate,
-    so the GenSPP cell ran its fifty candidates over a hundred generations
-    under a flag that promises minutes. The key below is two candidates and one
-    generation, and every other setting is the paper's.
-    """
-    module = corpus_keys(corpus)
-    prefix = "TOY" if corpus == "toy" else "HATEXPLAIN"
-    return getattr(module, f"{prefix}_GENSPP_SMOKE_TRAINER")
 
 
 def released_threshold_search(corpus: str):
@@ -165,7 +143,7 @@ def main() -> None:
 
     if arguments.seeds and arguments.smoke:
         raise SystemExit("--smoke runs one seed of its own, so it takes no --seeds")
-    extra = dict(SMOKE) if arguments.smoke else {}
+    extra = {}
     if arguments.seeds:
         try:
             extra["seeds"] = seed_list(arguments.seeds)
@@ -177,14 +155,12 @@ def main() -> None:
     if arguments.embeddings:
         extra["embeddings"] = arguments.embeddings
 
-    chosen = keys(arguments.corpus)
+    chosen = keys(arguments.corpus, smoke=arguments.smoke)
     wanted = [arguments.model] if arguments.model else list(MODELS)
     for model in wanted:
         print(f"=== {arguments.corpus}-{model} ===", flush=True)
         cell = dict(extra)
-        if model == "genspp" and arguments.smoke:
-            cell["search"] = smoke_search(arguments.corpus)
-        elif model == "genspp" and arguments.released_threshold:
+        if model == "genspp" and arguments.released_threshold:
             cell["search"] = released_threshold_search(arguments.corpus)
         elif model == "genspp" and arguments.g150:
             cell["search"] = g150_search(arguments.corpus)

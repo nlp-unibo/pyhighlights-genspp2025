@@ -58,7 +58,7 @@ The reproduction requires Python 3.10 or later.
 
 ```bash
 uv venv && uv pip install -e ".[dev]"
-uv run pytest                                          # 30 tests, seconds
+uv run pytest                                          # 31 tests, seconds
 uv run python run.py toy --smoke                       # one seed, one batch, minutes
 uv run python run.py toy --model genspp                # one cell
 uv run python run.py hatexplain --embeddings glove.twitter.27B.25d.txt

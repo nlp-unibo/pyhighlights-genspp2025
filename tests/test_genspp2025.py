@@ -35,7 +35,6 @@ from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_SPARSITY,
     HATEXPLAIN_SPARSITY_LOSS,
 )
-from genspp2025.configurations.keys import GENSPP_SEEDS, SEEDS
 from genspp2025.configurations.toy import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
@@ -46,6 +45,7 @@ from genspp2025.configurations.toy.keys import (
     TOY,
     TOY_BENCHMARK,
     TOY_FR,
+    TOY_FR_SMOKE_TASK,
     TOY_FR_TASK,
     TOY_GENSPP,
     TOY_GENSPP_G150_TRAINER,
@@ -58,6 +58,10 @@ from genspp2025.configurations.toy.keys import (
     TOY_MGR,
 )
 from tests.corpora import hatexplain
+
+#: The release's seeds, written out so that a drifting configuration fails.
+RELEASED_SEEDS = [2023, 15451, 1337, 2001, 2080]
+RELEASED_GENSPP_SEEDS = [1, 2, 3, 4, 5]
 
 
 def build_registry():
@@ -122,10 +126,10 @@ def test_the_released_hyperparameters_are_what_is_registered():
     build_registry()
 
     task = Registry.from_key(TOY_FR_TASK)
-    assert task.seeds == SEEDS == [2023, 15451, 1337, 2001, 2080]
+    assert task.seeds == RELEASED_SEEDS
     for key in (TOY_GENSPP_TASK, HATEXPLAIN_GENSPP_TASK):
         config = Registry.retrieve_configuration(registration_key=key)
-        assert config.seeds == GENSPP_SEEDS == [1, 2, 3, 4, 5]
+        assert config.seeds == RELEASED_GENSPP_SEEDS
     assert task.batch_size == 64
     # The paper's patience is the reproduction's own registration, not the
     # library's default of five.
@@ -422,7 +426,7 @@ def test_the_hatexplain_pipeline_folds_classes_before_it_counts_votes(tmp_path):
 def test_a_smoke_baseline_keeps_the_real_run_accelerator(tmp_path):
     """Smoke shortens training without changing where training runs."""
     build_registry()
-    task = Registry.from_key(TOY_FR_TASK, save_path=str(tmp_path), **run.SMOKE)
+    task = Registry.from_key(TOY_FR_SMOKE_TASK, save_path=str(tmp_path))
 
     assert {
         name: task.trainer_args[name]
@@ -460,6 +464,24 @@ def test_a_smoke_search_is_small_where_trainer_arguments_cannot_reach():
     assert smoke.model == paper.model
     assert smoke.task_loss_limit == paper.task_loss_limit
     assert smoke.mutation_std == paper.mutation_std
+
+
+def test_every_cell_has_a_registered_smoke_task():
+    """A smoke task is its paper task at one seed, with a smoke search for GenSPP."""
+    build_registry()
+    for corpus in ("toy", "hatexplain"):
+        paper, smoke = run.keys(corpus), run.keys(corpus, smoke=True)
+        for model in run.MODELS:
+            full = Registry.retrieve_configuration(registration_key=paper[model])
+            cut = Registry.retrieve_configuration(registration_key=smoke[model])
+            assert cut.seeds == [2023]
+            assert cut.trainer_args["max_epochs"] == 1
+            assert cut.name == full.name
+            assert cut.loader == full.loader
+            if model == "genspp":
+                assert "smoke" in cut.search.tags
+            else:
+                assert cut.model == full.model
 
 
 def test_a_run_takes_one_search_or_the_other(monkeypatch, capsys):
@@ -645,7 +667,7 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
             {
                 "settings": {
                     "name": "toy-genspp",
-                    "seeds": GENSPP_SEEDS,
+                    "seeds": RELEASED_GENSPP_SEEDS,
                     "search": {"@key": str(TOY_GENSPP_TRAINER)},
                 }
             }
@@ -655,7 +677,7 @@ def test_the_cost_table_reads_what_a_run_cost_and_says_what_is_missing(tmp_path)
         json.dumps(
             {
                 "name": "toy-genspp",
-                "seeds": GENSPP_SEEDS,
+                "seeds": RELEASED_GENSPP_SEEDS,
                 "runs": [run],
                 "summary": {
                     name: {"mean": value, "std": 0.0, "values": [value]}
@@ -785,12 +807,15 @@ def test_a_run_is_the_row_its_manifest_says_it_ran(tmp_path):
         return {"@key": str(key)}
 
     paper = written(
-        "1", name="toy-genspp", seeds=GENSPP_SEEDS, search=search(TOY_GENSPP_TRAINER)
+        "1",
+        name="toy-genspp",
+        seeds=RELEASED_GENSPP_SEEDS,
+        search=search(TOY_GENSPP_TRAINER),
     )
     g150 = written(
         "2",
         name="toy-genspp",
-        seeds=GENSPP_SEEDS,
+        seeds=RELEASED_GENSPP_SEEDS,
         search=search(TOY_GENSPP_G150_TRAINER),
     )
     smoke = written(
@@ -802,9 +827,12 @@ def test_a_run_is_the_row_its_manifest_says_it_ran(tmp_path):
         seeds=list(range(1, 21)),
         search=search(TOY_GENSPP_TRAINER),
     )
-    baseline = written("5", name="toy-fr", seeds=SEEDS, trainer_args={})
+    baseline = written("5", name="toy-fr", seeds=RELEASED_SEEDS, trainer_args={})
     shortened = written(
-        "6", name="toy-fr", seeds=SEEDS, trainer_args={"limit_train_batches": 1}
+        "6",
+        name="toy-fr",
+        seeds=RELEASED_SEEDS,
+        trainer_args={"limit_train_batches": 1},
     )
 
     assert compare.row_of(paper) == "genspp"

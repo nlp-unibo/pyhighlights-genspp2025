@@ -1,6 +1,6 @@
 """One task per architecture: what a run of this corpus is."""
 
-from cinnamon.configuration import Param
+from cinnamon.configuration import Configuration, Param
 from cinnamon.registry import RegistrationKey, register_class
 from pyhighlights.components.models.base import Model
 from pyhighlights.components.preprocessors import Preprocessor
@@ -11,17 +11,24 @@ from pyhighlights.configurations.keys import (
 from genspp2025.configurations.common import (
     PaperGenSPPTaskConfig,
     PaperTaskConfig,
+    SmokeTaskConfig,
 )
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_FR,
+    HATEXPLAIN_FR_SMOKE_TASK,
     HATEXPLAIN_FR_TASK,
+    HATEXPLAIN_GENSPP_SMOKE_TASK,
+    HATEXPLAIN_GENSPP_SMOKE_TRAINER,
     HATEXPLAIN_GENSPP_TASK,
     HATEXPLAIN_GENSPP_TRAINER,
     HATEXPLAIN_GRAT,
+    HATEXPLAIN_GRAT_SMOKE_TASK,
     HATEXPLAIN_GRAT_TASK,
     HATEXPLAIN_MCD,
+    HATEXPLAIN_MCD_SMOKE_TASK,
     HATEXPLAIN_MCD_TASK,
     HATEXPLAIN_MGR,
+    HATEXPLAIN_MGR_SMOKE_TASK,
     HATEXPLAIN_MGR_TASK,
     HATEXPLAIN_PIPELINE,
 )
@@ -29,8 +36,8 @@ from genspp2025.configurations.hatexplain.keys import (
 SPP_TASK_COMPONENT = "pyhighlights.components.tasks.SPPTask"
 
 
-class HateXplainTaskConfig(PaperTaskConfig):
-    """One baseline over HateXplain, with the paper's preprocessing."""
+class HateXplainCorpusConfig(Configuration):
+    """What every task over HateXplain reads, baseline or search."""
 
     loader: RegistrationKey = Param(HATEXPLAIN)
     preprocessor: RegistrationKey[Preprocessor] | None = Param(HATEXPLAIN_PIPELINE)
@@ -43,6 +50,10 @@ class HateXplainTaskConfig(PaperTaskConfig):
     #: the package docstring rather than reproduced.
     vocabulary_from: str = Param("splits")
     pretrained_tokens_only: bool = Param(False)
+
+
+class HateXplainTaskConfig(HateXplainCorpusConfig, PaperTaskConfig):
+    """One baseline over HateXplain, with the paper's preprocessing."""
 
 
 @register_class(key=HATEXPLAIN_FR_TASK, component=SPP_TASK_COMPONENT, run_method="run")
@@ -76,7 +87,7 @@ class HateXplainGRATTaskConfig(HateXplainTaskConfig):
     component="pyhighlights.components.tasks.GenSPPTask",
     run_method="run",
 )
-class HateXplainGenSPPTaskConfig(PaperGenSPPTaskConfig):
+class HateXplainGenSPPTaskConfig(HateXplainCorpusConfig, PaperGenSPPTaskConfig):
     """GenSPP over HateXplain, embedded as the four baselines are.
 
     The genetic half of the release builds its vocabulary from the training
@@ -89,10 +100,50 @@ class HateXplainGenSPPTaskConfig(PaperGenSPPTaskConfig):
     """
 
     name: str = Param("hatexplain-genspp")
-    loader: RegistrationKey = Param(HATEXPLAIN)
-    preprocessor: RegistrationKey[Preprocessor] | None = Param(HATEXPLAIN_PIPELINE)
     search: RegistrationKey = Param(HATEXPLAIN_GENSPP_TRAINER)
-    embeddings: str | None = Param(None)
-    pretrained_tokens_only: bool = Param(False)
-    vocabulary_from: str = Param("splits")
     requires_embeddings: bool = Param(True)
+
+
+@register_class(
+    key=HATEXPLAIN_FR_SMOKE_TASK,
+    component=SPP_TASK_COMPONENT,
+    run_method="run",
+)
+class HateXplainFRSmokeTaskConfig(SmokeTaskConfig, HateXplainFRTaskConfig):
+    pass
+
+
+@register_class(
+    key=HATEXPLAIN_MGR_SMOKE_TASK,
+    component=SPP_TASK_COMPONENT,
+    run_method="run",
+)
+class HateXplainMGRSmokeTaskConfig(SmokeTaskConfig, HateXplainMGRTaskConfig):
+    pass
+
+
+@register_class(
+    key=HATEXPLAIN_MCD_SMOKE_TASK,
+    component=SPP_TASK_COMPONENT,
+    run_method="run",
+)
+class HateXplainMCDSmokeTaskConfig(SmokeTaskConfig, HateXplainMCDTaskConfig):
+    pass
+
+
+@register_class(
+    key=HATEXPLAIN_GRAT_SMOKE_TASK,
+    component=SPP_TASK_COMPONENT,
+    run_method="run",
+)
+class HateXplainGRATSmokeTaskConfig(SmokeTaskConfig, HateXplainGRATTaskConfig):
+    pass
+
+
+@register_class(
+    key=HATEXPLAIN_GENSPP_SMOKE_TASK,
+    component="pyhighlights.components.tasks.GenSPPTask",
+    run_method="run",
+)
+class HateXplainGenSPPSmokeTaskConfig(SmokeTaskConfig, HateXplainGenSPPTaskConfig):
+    search: RegistrationKey = Param(HATEXPLAIN_GENSPP_SMOKE_TRAINER)
