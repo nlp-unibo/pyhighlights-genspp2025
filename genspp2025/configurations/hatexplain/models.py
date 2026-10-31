@@ -15,6 +15,7 @@ from pyhighlights.configurations.mcd import GRUMCDConfig
 from pyhighlights.configurations.mgr import GRUMGRConfig
 from pyhighlights.utility.losses import Loss
 
+from genspp2025.configurations.hatexplain import EMBEDDING_DIM
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_BACKBONE,
     HATEXPLAIN_FR,
@@ -41,7 +42,7 @@ class HateXplainGuiderConfig(GuidanceGuiderConfig):
     #: A placeholder, as in :class:`HateXplainBackboneConfig`: the task
     #: replaces the table with GloVe.
     vocab_size: int = Param(3, ge=3)
-    embedding_dim: int = Param(25, ge=1)
+    embedding_dim: int = Param(EMBEDDING_DIM, ge=1)
     hidden_size: int = Param(16, ge=1)
     freeze_embeddings: bool | None = Param(True)
 

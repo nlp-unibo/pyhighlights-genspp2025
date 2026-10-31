@@ -4,6 +4,7 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.backbones import GRUBackboneConfig
 
+from genspp2025.configurations.hatexplain import EMBEDDING_DIM
 from genspp2025.configurations.hatexplain.keys import (
     HATEXPLAIN_BACKBONE,
     HATEXPLAIN_GENSPP_BACKBONE,
@@ -25,7 +26,7 @@ class HateXplainBackboneConfig(GRUBackboneConfig):
     #: ``embedding_dim`` below is not a placeholder: the replacement is refused
     #: if its width disagrees.
     vocab_size: int = Param(2, ge=1)
-    embedding_dim: int = Param(25, ge=1)
+    embedding_dim: int = Param(EMBEDDING_DIM, ge=1)
     hidden_size: int = Param(16, ge=1)
     freeze_embeddings: bool = Param(True)
     dropout_rate: float = Param(0.0, ge=0.0, lt=1.0)

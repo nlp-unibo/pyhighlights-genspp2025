@@ -46,8 +46,21 @@ import pandas as pd
 from pyhighlights.components.analyzers import MetricsAnalyzer, latest_runs
 
 from genspp2025.configurations.hatexplain import keys as hatexplain_keys
-from genspp2025.configurations.keys import GENSPP_SEEDS, SEEDS
+from genspp2025.configurations.hatexplain.tasks import (
+    HateXplainFRTaskConfig,
+    HateXplainGenSPPTaskConfig,
+    HateXplainGRATTaskConfig,
+    HateXplainMCDTaskConfig,
+    HateXplainMGRTaskConfig,
+)
 from genspp2025.configurations.toy import keys as toy_keys
+from genspp2025.configurations.toy.tasks import (
+    ToyFRTaskConfig,
+    ToyGenSPPTaskConfig,
+    ToyGRATTaskConfig,
+    ToyMCDTaskConfig,
+    ToyMGRTaskConfig,
+)
 from published import COLUMNS, TABLE_1, TABLE_2
 
 #: The library's column name for each of the paper's, and what to multiply it
@@ -68,6 +81,24 @@ SEARCHES = {
     str(toy_keys.TOY_GENSPP_G150_TRAINER): "genspp-g150",
     str(hatexplain_keys.HATEXPLAIN_GENSPP_TRAINER): "genspp",
     str(hatexplain_keys.HATEXPLAIN_GENSPP_G150_TRAINER): "genspp-g150",
+}
+
+#: Each paper task's seeds, by the task name a run's manifest records. A run
+#: measures a row only on the seeds its task registers.
+PAPER_SEEDS = {
+    config.model_fields["name"].default: list(config.model_fields["seeds"].default)
+    for config in (
+        ToyFRTaskConfig,
+        ToyMGRTaskConfig,
+        ToyMCDTaskConfig,
+        ToyGRATTaskConfig,
+        ToyGenSPPTaskConfig,
+        HateXplainFRTaskConfig,
+        HateXplainMGRTaskConfig,
+        HateXplainMCDTaskConfig,
+        HateXplainGRATTaskConfig,
+        HateXplainGenSPPTaskConfig,
+    )
 }
 
 #: The rows the comparison prints, and the table each is published in.
@@ -167,7 +198,7 @@ def row_of(run: Path) -> str | None:
         model = SEARCHES.get(settings["search"].get("@key"))
     if model not in ROWS:
         return None
-    seeds = GENSPP_SEEDS if model.startswith("genspp") else SEEDS
+    seeds = PAPER_SEEDS.get(settings.get("name"))
     return model if list(settings.get("seeds", [])) == seeds else None
 
 
