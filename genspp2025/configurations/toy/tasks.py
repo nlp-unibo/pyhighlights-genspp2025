@@ -12,7 +12,7 @@ from genspp2025.configurations.common import (
     PaperTaskConfig,
     SmokeTaskConfig,
 )
-from genspp2025.configurations.toy import (
+from genspp2025.configurations.toy.constants import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )

@@ -4,7 +4,7 @@ from cinnamon.configuration import Param
 from cinnamon.registry import register_class
 from pyhighlights.configurations.backbones import GRUBackboneConfig
 
-from genspp2025.configurations.toy import (
+from genspp2025.configurations.toy.constants import (
     EMBEDDING_DIM,
     VOCABULARY_SIZE,
 )
